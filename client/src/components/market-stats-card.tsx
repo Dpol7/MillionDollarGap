@@ -71,12 +71,6 @@ export default function MarketStatsCard({ bitcoinPrice }: MarketStatsCardProps) 
               -{athDistance.toFixed(2)}%
             </span>
           </div>
-          <div className="mt-6 p-4 bg-accent/10 border border-accent/20 rounded-lg">
-            <p className="text-sm text-accent">
-              <strong>Fun Fact:</strong> At $1M per BTC, Bitcoin's market cap would be approximately{' '}
-              {formatLargeCurrency(marketCapAt1M)}, surpassing gold's market cap.
-            </p>
-          </div>
         </div>
       </CardContent>
     </Card>
