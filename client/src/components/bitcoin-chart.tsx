@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { fetchBitcoinPrice, fetchHistoricalData, calculateDistanceFromMillion } from "@/lib/bitcoin-api";
 import { TimeRange } from "@shared/schema";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ReferenceDot, Label } from "recharts";
+import { Download } from "lucide-react";
+import html2canvas from "html2canvas";
+import { useToast } from "@/hooks/use-toast";
 
 const timeRanges: { value: TimeRange; label: string }[] = [
   { value: '24h', label: '24H' },
@@ -17,6 +20,9 @@ const timeRanges: { value: TimeRange; label: string }[] = [
 
 export default function BitcoinChart() {
   const [selectedTimeRange, setSelectedTimeRange] = useState<TimeRange>('24h');
+  const [isExporting, setIsExporting] = useState(false);
+  const chartRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   const { data: bitcoinPrice } = useQuery<any>({
     queryKey: ['/api/bitcoin/price'],
@@ -68,8 +74,40 @@ export default function BitcoinChart() {
     })}`;
   };
 
+  const handleExportChart = async () => {
+    if (!chartRef.current) return;
+    
+    setIsExporting(true);
+    try {
+      const canvas = await html2canvas(chartRef.current, {
+        backgroundColor: '#ffffff',
+        scale: 2,
+        logging: false,
+      });
+      
+      const link = document.createElement('a');
+      link.download = `bitcoin-chart-${selectedTimeRange}-${Date.now()}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      
+      toast({
+        title: "Chart exported",
+        description: "Your chart has been downloaded as an image",
+      });
+    } catch (error) {
+      console.error('Export error:', error);
+      toast({
+        title: "Export failed",
+        description: "Could not export chart. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
-    <Card className="stat-card">
+    <Card className="stat-card" ref={chartRef}>
       <CardContent className="p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 space-y-4 sm:space-y-0">
           <div>
@@ -77,24 +115,39 @@ export default function BitcoinChart() {
             <p className="text-sm text-muted-foreground">Track how the gap has changed over time</p>
           </div>
 
-          {/* Time Range Selector */}
-          <div className="flex items-center space-x-2 bg-secondary rounded-lg p-1">
-            {timeRanges.map(({ value, label }) => (
-              <Button
-                key={value}
-                variant={selectedTimeRange === value ? "default" : "ghost"}
-                size="sm"
-                className={`px-3 py-1.5 text-sm font-medium transition-all ${
-                  selectedTimeRange === value 
-                    ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
-                    : 'hover:bg-muted'
-                }`}
-                onClick={() => setSelectedTimeRange(value)}
-                data-testid={`button-timerange-${value}`}
-              >
-                {label}
-              </Button>
-            ))}
+          <div className="flex items-center gap-2">
+            {/* Export Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportChart}
+              disabled={isExporting || isLoading}
+              className="px-3"
+              data-testid="button-export-chart"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export
+            </Button>
+
+            {/* Time Range Selector */}
+            <div className="flex items-center space-x-2 bg-secondary rounded-lg p-1">
+              {timeRanges.map(({ value, label }) => (
+                <Button
+                  key={value}
+                  variant={selectedTimeRange === value ? "default" : "ghost"}
+                  size="sm"
+                  className={`px-3 py-1.5 text-sm font-medium transition-all ${
+                    selectedTimeRange === value 
+                      ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
+                      : 'hover:bg-muted'
+                  }`}
+                  onClick={() => setSelectedTimeRange(value)}
+                  data-testid={`button-timerange-${value}`}
+                >
+                  {label}
+                </Button>
+              ))}
+            </div>
           </div>
         </div>
 
