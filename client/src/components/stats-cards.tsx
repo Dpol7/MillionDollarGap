@@ -1,13 +1,15 @@
+import { useState } from "react";
 import { BitcoinPrice } from "@shared/schema";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { 
   calculateDistanceFromMillion, 
   calculateProgressToMillion, 
   formatCurrency, 
   formatLargeCurrency 
 } from "@/lib/bitcoin-api";
-import { TrendingUp, Target, BarChart3 } from "lucide-react";
+import { TrendingUp, Target, BarChart3, Percent, DollarSign } from "lucide-react";
 
 interface StatsCardsProps {
   bitcoinPrice?: BitcoinPrice;
@@ -15,6 +17,7 @@ interface StatsCardsProps {
 }
 
 export default function StatsCards({ bitcoinPrice, isLoading }: StatsCardsProps) {
+  const [showPercentage, setShowPercentage] = useState(false);
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
@@ -75,14 +78,39 @@ export default function StatsCards({ bitcoinPrice, isLoading }: StatsCardsProps)
       <Card className="stat-card md:col-span-2">
         <CardContent className="pt-6">
           <div className="flex items-start justify-between mb-3">
-            <div className="text-muted-foreground text-sm font-medium">Distance from $1M</div>
-            <Target className="h-5 w-5 text-accent" />
+            <div className="text-muted-foreground text-sm font-medium">
+              {showPercentage ? "% Increase Needed" : "Distance from $1M"}
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowPercentage(!showPercentage)}
+                className="h-8 px-2 hover:bg-accent/10"
+                data-testid="button-toggle-view"
+              >
+                {showPercentage ? (
+                  <DollarSign className="h-4 w-4 text-accent" />
+                ) : (
+                  <Percent className="h-4 w-4 text-accent" />
+                )}
+              </Button>
+              <Target className="h-5 w-5 text-accent" />
+            </div>
           </div>
           <div className="font-mono text-3xl sm:text-4xl lg:text-5xl font-bold text-accent mb-2" data-testid="text-distance">
-            {formatCurrency(distance)}
+            {showPercentage ? (
+              <span data-testid="text-percentage-view">+{increaseNeeded.toFixed(2)}%</span>
+            ) : (
+              <span data-testid="text-dollar-view">{formatCurrency(distance)}</span>
+            )}
           </div>
           <div className="text-muted-foreground text-sm">
-            Bitcoin needs to increase by <span className="text-foreground font-semibold">{increaseNeeded.toFixed(0)}%</span> to reach $1 million
+            {showPercentage ? (
+              <>Bitcoin needs to increase by this percentage to reach $1 million</>
+            ) : (
+              <>Bitcoin needs to increase by <span className="text-foreground font-semibold">{increaseNeeded.toFixed(0)}%</span> to reach $1 million</>
+            )}
           </div>
         </CardContent>
       </Card>
