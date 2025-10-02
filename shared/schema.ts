@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { pgTable, serial, numeric, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, numeric, boolean, timestamp, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 
 export const bitcoinPriceSchema = z.object({
@@ -51,3 +51,17 @@ export const insertPriceAlertSchema = createInsertSchema(priceAlerts).omit({
 
 export type InsertPriceAlert = z.infer<typeof insertPriceAlertSchema>;
 export type PriceAlert = typeof priceAlerts.$inferSelect;
+
+export const pollVotes = pgTable("poll_votes", {
+  id: serial("id").primaryKey(),
+  prediction: varchar("prediction", { length: 50 }).notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertPollVoteSchema = createInsertSchema(pollVotes).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPollVote = z.infer<typeof insertPollVoteSchema>;
+export type PollVote = typeof pollVotes.$inferSelect;
