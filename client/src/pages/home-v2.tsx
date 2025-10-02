@@ -8,6 +8,7 @@ import MilestonesCard from "@/components/milestones-card";
 import MillionDollarPoll from "@/components/million-dollar-poll";
 import { BitcoinPrice } from "@shared/schema";
 import { useEffect } from "react";
+import { Link } from "wouter";
 
 export default function HomeV2() {
   const { toast } = useToast();
@@ -68,6 +69,16 @@ export default function HomeV2() {
             </div>
             
             <div className="flex items-center space-x-4">
+              <div className="hidden md:flex items-center space-x-1 px-1 py-1 bg-secondary rounded-lg">
+                <Link href="/">
+                  <button className="px-3 py-1.5 hover:bg-accent rounded-md text-sm font-medium transition-colors" data-testid="link-v1">
+                    Version 1
+                  </button>
+                </Link>
+                <div className="px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-sm font-medium" data-testid="tab-v2-active">
+                  Version 2
+                </div>
+              </div>
               <div className="hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-full bg-success/10 border border-success/20">
                 <div className="w-2 h-2 bg-success rounded-full pulse-animation"></div>
                 <span className="text-xs font-medium text-success">Live</span>
