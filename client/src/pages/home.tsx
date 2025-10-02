@@ -71,14 +71,14 @@ export default function Home() {
               </div>
             </div>
             
-            <div className="flex items-center space-x-4">
-              <div className="hidden md:flex items-center space-x-1 px-1 py-1 bg-secondary rounded-lg">
-                <div className="px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-sm font-medium" data-testid="tab-v1-active">
-                  Version 1
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <div className="flex items-center space-x-1 px-1 py-1 bg-secondary rounded-lg">
+                <div className="px-2 sm:px-3 py-1.5 bg-primary text-primary-foreground rounded-md text-xs sm:text-sm font-medium" data-testid="tab-v1-active">
+                  V1
                 </div>
                 <Link href="/v2">
-                  <button className="px-3 py-1.5 hover:bg-accent rounded-md text-sm font-medium transition-colors" data-testid="link-v2">
-                    Version 2
+                  <button className="px-2 sm:px-3 py-1.5 hover:bg-accent rounded-md text-xs sm:text-sm font-medium transition-colors" data-testid="link-v2">
+                    V2
                   </button>
                 </Link>
               </div>
