@@ -58,9 +58,13 @@ export const pollVotes = pgTable("poll_votes", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+export const pollPredictionSchema = z.enum(["2025", "2026", "2027", "2028", "2029", "2030", "2030+", "Never"]);
+
 export const insertPollVoteSchema = createInsertSchema(pollVotes).omit({
   id: true,
   createdAt: true,
+}).extend({
+  prediction: pollPredictionSchema,
 });
 
 export type InsertPollVote = z.infer<typeof insertPollVoteSchema>;
