@@ -8,6 +8,7 @@ import StatsCards from "@/components/stats-cards";
 import MilestonesCard from "@/components/milestones-card";
 import MarketStatsCard from "@/components/market-stats-card";
 import BitcoinObituariesCard from "@/components/bitcoin-obituaries-card";
+import MillionDollarPoll from "@/components/million-dollar-poll";
 import { BitcoinPrice } from "@shared/schema";
 import { useEffect } from "react";
 
@@ -116,6 +117,7 @@ export default function Home() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
           <MilestonesCard bitcoinPrice={bitcoinPrice} />
           <MarketStatsCard bitcoinPrice={bitcoinPrice} />
+          <MillionDollarPoll />
         </div>
 
         {/* Bitcoin Obituaries Section */}
