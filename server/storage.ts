@@ -1,10 +1,21 @@
-import { type BitcoinPrice, type HistoricalData } from "@shared/schema";
+import { type BitcoinPrice, type HistoricalData, type InsertPriceAlert, type PriceAlert, priceAlerts } from "@shared/schema";
+import { neon } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-http";
+import { eq } from "drizzle-orm";
+
+const sql = neon(process.env.DATABASE_URL!);
+const db = drizzle(sql);
 
 export interface IStorage {
   getCurrentPrice(): Promise<BitcoinPrice | undefined>;
   setCurrentPrice(price: BitcoinPrice): Promise<void>;
   getHistoricalData(timeRange: string): Promise<HistoricalData[]>;
   setHistoricalData(timeRange: string, data: HistoricalData[]): Promise<void>;
+  
+  createPriceAlert(alert: InsertPriceAlert): Promise<PriceAlert>;
+  getPriceAlerts(): Promise<PriceAlert[]>;
+  deletePriceAlert(id: number): Promise<void>;
+  updatePriceAlert(id: number, triggered: boolean): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -30,6 +41,23 @@ export class MemStorage implements IStorage {
 
   async setHistoricalData(timeRange: string, data: HistoricalData[]): Promise<void> {
     this.historicalData.set(timeRange, data);
+  }
+
+  async createPriceAlert(alert: InsertPriceAlert): Promise<PriceAlert> {
+    const [newAlert] = await db.insert(priceAlerts).values(alert).returning();
+    return newAlert;
+  }
+
+  async getPriceAlerts(): Promise<PriceAlert[]> {
+    return await db.select().from(priceAlerts).orderBy(priceAlerts.createdAt);
+  }
+
+  async deletePriceAlert(id: number): Promise<void> {
+    await db.delete(priceAlerts).where(eq(priceAlerts.id, id));
+  }
+
+  async updatePriceAlert(id: number, triggered: boolean): Promise<void> {
+    await db.update(priceAlerts).set({ triggered }).where(eq(priceAlerts.id, id));
   }
 }
 

@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { bitcoinPriceSchema, timeRangeSchema } from "@shared/schema";
+import { bitcoinPriceSchema, timeRangeSchema, insertPriceAlertSchema } from "@shared/schema";
 
 const COINGECKO_API_KEY = process.env.COINGECKO_API_KEY || process.env.API_KEY;
 
@@ -118,6 +118,23 @@ async function fetchHistoricalData(timeRange: string) {
   }
 }
 
+async function checkPriceAlerts(currentPrice: number) {
+  try {
+    const alerts = await storage.getPriceAlerts();
+    for (const alert of alerts) {
+      if (!alert.triggered && alert.isActive) {
+        const targetPrice = parseFloat(alert.targetPrice);
+        if (currentPrice >= targetPrice) {
+          await storage.updatePriceAlert(alert.id, true);
+          console.log(`Alert triggered: BTC reached $${targetPrice}`);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error checking price alerts:', error);
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Get current Bitcoin price
   app.get("/api/bitcoin/price", async (req, res) => {
@@ -132,6 +149,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const price = await fetchBitcoinPrice();
       await storage.setCurrentPrice(price);
+      
+      // Check price alerts in background
+      checkPriceAlerts(price.price);
       
       res.json(price);
     } catch (error) {
@@ -172,6 +192,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         message: 'Failed to fetch historical data. Please check API key configuration or try again later.' 
       });
+    }
+  });
+
+  // Price Alerts API
+  app.get("/api/alerts", async (req, res) => {
+    try {
+      const alerts = await storage.getPriceAlerts();
+      res.json(alerts);
+    } catch (error) {
+      console.error('Error fetching alerts:', error);
+      res.status(500).json({ message: 'Failed to fetch price alerts' });
+    }
+  });
+
+  app.post("/api/alerts", async (req, res) => {
+    try {
+      const validation = insertPriceAlertSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: 'Invalid alert data', errors: validation.error });
+      }
+
+      const alert = await storage.createPriceAlert(validation.data);
+      res.status(201).json(alert);
+    } catch (error) {
+      console.error('Error creating alert:', error);
+      res.status(500).json({ message: 'Failed to create price alert' });
+    }
+  });
+
+  app.delete("/api/alerts/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: 'Invalid alert ID' });
+      }
+
+      await storage.deletePriceAlert(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error('Error deleting alert:', error);
+      res.status(500).json({ message: 'Failed to delete price alert' });
+    }
+  });
+
+  app.patch("/api/alerts/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: 'Invalid alert ID' });
+      }
+
+      const { triggered } = req.body;
+      if (typeof triggered !== 'boolean') {
+        return res.status(400).json({ message: 'Invalid triggered value' });
+      }
+
+      await storage.updatePriceAlert(id, triggered);
+      res.status(200).json({ success: true });
+    } catch (error) {
+      console.error('Error updating alert:', error);
+      res.status(500).json({ message: 'Failed to update price alert' });
     }
   });
 
