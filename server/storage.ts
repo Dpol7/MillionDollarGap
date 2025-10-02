@@ -1,4 +1,4 @@
-import { type BitcoinPrice, type HistoricalData, type InsertPriceAlert, type PriceAlert, priceAlerts } from "@shared/schema";
+import { type BitcoinPrice, type HistoricalData, type CryptoPrice, type InsertPriceAlert, type PriceAlert, priceAlerts } from "@shared/schema";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { eq } from "drizzle-orm";
@@ -12,6 +12,9 @@ export interface IStorage {
   getHistoricalData(timeRange: string): Promise<HistoricalData[]>;
   setHistoricalData(timeRange: string, data: HistoricalData[]): Promise<void>;
   
+  getMultiCryptoPrices(): Promise<CryptoPrice[]>;
+  setMultiCryptoPrices(prices: CryptoPrice[]): Promise<void>;
+  
   createPriceAlert(alert: InsertPriceAlert): Promise<PriceAlert>;
   getPriceAlerts(): Promise<PriceAlert[]>;
   deletePriceAlert(id: number): Promise<void>;
@@ -21,10 +24,12 @@ export interface IStorage {
 export class MemStorage implements IStorage {
   private currentPrice: BitcoinPrice | undefined;
   private historicalData: Map<string, HistoricalData[]>;
+  private multiCryptoPrices: CryptoPrice[];
 
   constructor() {
     this.currentPrice = undefined;
     this.historicalData = new Map();
+    this.multiCryptoPrices = [];
   }
 
   async getCurrentPrice(): Promise<BitcoinPrice | undefined> {
@@ -41,6 +46,14 @@ export class MemStorage implements IStorage {
 
   async setHistoricalData(timeRange: string, data: HistoricalData[]): Promise<void> {
     this.historicalData.set(timeRange, data);
+  }
+
+  async getMultiCryptoPrices(): Promise<CryptoPrice[]> {
+    return this.multiCryptoPrices;
+  }
+
+  async setMultiCryptoPrices(prices: CryptoPrice[]): Promise<void> {
+    this.multiCryptoPrices = prices;
   }
 
   async createPriceAlert(alert: InsertPriceAlert): Promise<PriceAlert> {

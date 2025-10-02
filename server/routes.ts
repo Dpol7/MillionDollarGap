@@ -118,6 +118,57 @@ async function fetchHistoricalData(timeRange: string) {
   }
 }
 
+async function fetchMultiCryptoPrices() {
+  try {
+    const headers: Record<string, string> = {
+      'Accept': 'application/json',
+    };
+    
+    if (COINGECKO_API_KEY) {
+      headers['x-cg-demo-api-key'] = COINGECKO_API_KEY;
+    }
+
+    const response = await fetch(
+      'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,binancecoin&vs_currencies=usd&include_market_cap=true&include_24hr_change=true',
+      { headers }
+    );
+
+    if (!response.ok) {
+      throw new Error(`CoinGecko API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const TARGET_PRICE = 1000000;
+    
+    const cryptos = [
+      { id: 'bitcoin', symbol: 'BTC', name: 'Bitcoin' },
+      { id: 'ethereum', symbol: 'ETH', name: 'Ethereum' },
+      { id: 'binancecoin', symbol: 'BNB', name: 'BNB' },
+    ];
+
+    return cryptos.map(crypto => {
+      const price = data[crypto.id].usd;
+      const distance = Math.max(0, TARGET_PRICE - price);
+      const progress = Math.min(100, (price / TARGET_PRICE) * 100);
+      
+      return {
+        id: crypto.id,
+        symbol: crypto.symbol,
+        name: crypto.name,
+        price,
+        change24h: data[crypto.id].usd_24h_change || 0,
+        marketCap: data[crypto.id].usd_market_cap || 0,
+        distanceToMillion: distance,
+        percentToMillion: progress,
+        timestamp: Date.now(),
+      };
+    });
+  } catch (error) {
+    console.error('Error fetching multi-crypto prices:', error);
+    throw error;
+  }
+}
+
 async function checkPriceAlerts(currentPrice: number) {
   try {
     const alerts = await storage.getPriceAlerts();
@@ -191,6 +242,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('Error in /api/bitcoin/historical:', error);
       res.status(500).json({ 
         message: 'Failed to fetch historical data. Please check API key configuration or try again later.' 
+      });
+    }
+  });
+
+  // Get multi-crypto prices
+  app.get("/api/crypto/prices", async (req, res) => {
+    try {
+      const cached = await storage.getMultiCryptoPrices();
+      const now = Date.now();
+      
+      // Cache for 30 seconds
+      if (cached.length > 0 && (now - cached[0].timestamp) < 30000) {
+        return res.json(cached);
+      }
+
+      const prices = await fetchMultiCryptoPrices();
+      await storage.setMultiCryptoPrices(prices);
+      
+      res.json(prices);
+    } catch (error) {
+      console.error('Error in /api/crypto/prices:', error);
+      res.status(500).json({ 
+        message: 'Failed to fetch crypto prices. Please check API key configuration or try again later.' 
       });
     }
   });

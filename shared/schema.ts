@@ -12,6 +12,18 @@ export const bitcoinPriceSchema = z.object({
   timestamp: z.number(),
 });
 
+export const cryptoPriceSchema = z.object({
+  id: z.string(),
+  symbol: z.string(),
+  name: z.string(),
+  price: z.number(),
+  change24h: z.number(),
+  marketCap: z.number(),
+  distanceToMillion: z.number(),
+  percentToMillion: z.number(),
+  timestamp: z.number(),
+});
+
 export const historicalDataSchema = z.object({
   timestamp: z.number(),
   price: z.number(),
@@ -20,6 +32,7 @@ export const historicalDataSchema = z.object({
 export const timeRangeSchema = z.enum(['24h', '7d', '30d', '1y', 'all']);
 
 export type BitcoinPrice = z.infer<typeof bitcoinPriceSchema>;
+export type CryptoPrice = z.infer<typeof cryptoPriceSchema>;
 export type HistoricalData = z.infer<typeof historicalDataSchema>;
 export type TimeRange = z.infer<typeof timeRangeSchema>;
 

@@ -1,10 +1,19 @@
-import { BitcoinPrice, HistoricalData, TimeRange } from "@shared/schema";
+import { BitcoinPrice, HistoricalData, TimeRange, CryptoPrice } from "@shared/schema";
 
 export async function fetchBitcoinPrice(): Promise<BitcoinPrice> {
   const response = await fetch('/api/bitcoin/price');
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.message || 'Failed to fetch Bitcoin price');
+  }
+  return response.json();
+}
+
+export async function fetchMultiCryptoPrices(): Promise<CryptoPrice[]> {
+  const response = await fetch('/api/crypto/prices');
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Failed to fetch crypto prices');
   }
   return response.json();
 }

@@ -9,6 +9,7 @@ import BitcoinChart from "@/components/bitcoin-chart";
 import MilestonesCard from "@/components/milestones-card";
 import MarketStatsCard from "@/components/market-stats-card";
 import PriceAlertsCard from "@/components/price-alerts-card";
+import CryptoComparisonCard from "@/components/crypto-comparison-card";
 import { BitcoinPrice } from "@shared/schema";
 import { useEffect } from "react";
 
@@ -121,6 +122,11 @@ export default function Home() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
           <MilestonesCard bitcoinPrice={bitcoinPrice} />
           <MarketStatsCard bitcoinPrice={bitcoinPrice} />
+          <CryptoComparisonCard />
+        </div>
+
+        {/* Price Alerts Section */}
+        <div className="mt-8">
           <PriceAlertsCard />
         </div>
 
