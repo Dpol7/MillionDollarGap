@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import StatsCards from "@/components/stats-cards";
-import BitcoinChart from "@/components/bitcoin-chart";
 import MilestonesCard from "@/components/milestones-card";
 import MarketStatsCard from "@/components/market-stats-card";
 import PriceAlertsCard from "@/components/price-alerts-card";
@@ -34,10 +33,9 @@ export default function Home() {
   const handleRefresh = async () => {
     try {
       await refetch();
-      queryClient.invalidateQueries({ queryKey: ['/api/bitcoin/historical'] });
       toast({
         title: "Data refreshed",
-        description: "Bitcoin price and chart data updated successfully",
+        description: "Bitcoin price data updated successfully",
       });
     } catch (error) {
       toast({
@@ -114,9 +112,6 @@ export default function Home() {
 
           <StatsCards bitcoinPrice={bitcoinPrice} isLoading={isLoading} />
         </div>
-
-        {/* Chart Section */}
-        <BitcoinChart />
 
         {/* Additional Info Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
