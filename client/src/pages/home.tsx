@@ -7,7 +7,6 @@ import { queryClient } from "@/lib/queryClient";
 import StatsCards from "@/components/stats-cards";
 import MilestonesCard from "@/components/milestones-card";
 import MarketStatsCard from "@/components/market-stats-card";
-import PriceAlertsCard from "@/components/price-alerts-card";
 import CryptoComparisonCard from "@/components/crypto-comparison-card";
 import { BitcoinPrice } from "@shared/schema";
 import { useEffect } from "react";
@@ -118,11 +117,6 @@ export default function Home() {
           <MilestonesCard bitcoinPrice={bitcoinPrice} />
           <MarketStatsCard bitcoinPrice={bitcoinPrice} />
           <CryptoComparisonCard />
-        </div>
-
-        {/* Price Alerts Section */}
-        <div className="mt-8">
-          <PriceAlertsCard />
         </div>
 
         {/* Footer Info */}
