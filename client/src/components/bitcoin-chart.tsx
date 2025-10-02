@@ -3,9 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { fetchHistoricalData, calculateDistanceFromMillion } from "@/lib/bitcoin-api";
+import { fetchBitcoinPrice, fetchHistoricalData, calculateDistanceFromMillion } from "@/lib/bitcoin-api";
 import { TimeRange } from "@shared/schema";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ReferenceDot, Label } from "recharts";
 
 const timeRanges: { value: TimeRange; label: string }[] = [
   { value: '24h', label: '24H' },
@@ -18,10 +18,15 @@ const timeRanges: { value: TimeRange; label: string }[] = [
 export default function BitcoinChart() {
   const [selectedTimeRange, setSelectedTimeRange] = useState<TimeRange>('24h');
 
+  const { data: bitcoinPrice } = useQuery<any>({
+    queryKey: ['/api/bitcoin/price'],
+    refetchInterval: 30000,
+  });
+
   const { data: historicalData, isLoading, error } = useQuery({
     queryKey: ['/api/bitcoin/historical', selectedTimeRange],
     queryFn: () => fetchHistoricalData(selectedTimeRange),
-    refetchInterval: 300000, // Refresh every 5 minutes
+    refetchInterval: 300000,
   });
 
   const chartData = historicalData?.map(point => ({
@@ -34,6 +39,16 @@ export default function BitcoinChart() {
     distance: calculateDistanceFromMillion(point.price),
     price: point.price,
   })) || [];
+
+  const athDistance = bitcoinPrice?.allTimeHigh ? calculateDistanceFromMillion(bitcoinPrice.allTimeHigh) : null;
+  
+  const athPoint = chartData.length > 0 && athDistance !== null 
+    ? chartData.reduce((closest, point) => {
+        const currentDiff = Math.abs(point.distance - athDistance);
+        const closestDiff = Math.abs(closest.distance - athDistance);
+        return currentDiff < closestDiff ? point : closest;
+      }, chartData[0])
+    : null;
 
   const formatXAxisLabel = (timestamp: number) => {
     const date = new Date(timestamp);
@@ -154,6 +169,33 @@ export default function BitcoinChart() {
                   dot={false}
                   activeDot={{ r: 6, stroke: "hsl(217, 91%, 60%)", strokeWidth: 2, fill: "hsl(222, 47%, 5%)" }}
                 />
+                {athPoint && athDistance !== null && (
+                  <>
+                    <ReferenceLine 
+                      y={athDistance} 
+                      stroke="hsl(28, 92%, 54%)"
+                      strokeDasharray="5 5"
+                      strokeWidth={2}
+                    >
+                      <Label 
+                        value={`ATH: $${bitcoinPrice?.allTimeHigh.toLocaleString()}`}
+                        position="insideTopRight"
+                        fill="hsl(28, 92%, 54%)"
+                        fontSize={12}
+                        fontWeight="bold"
+                      />
+                    </ReferenceLine>
+                    <ReferenceDot
+                      x={athPoint.timestamp}
+                      y={athPoint.distance}
+                      r={6}
+                      fill="hsl(28, 92%, 54%)"
+                      stroke="hsl(222, 47%, 5%)"
+                      strokeWidth={2}
+                      data-testid="ath-marker"
+                    />
+                  </>
+                )}
               </LineChart>
             </ResponsiveContainer>
           )}
@@ -164,6 +206,10 @@ export default function BitcoinChart() {
           <div className="flex items-center space-x-2">
             <div className="w-3 h-3 rounded-full bg-gradient-to-r from-accent to-primary"></div>
             <span className="text-muted-foreground">Distance from $1M (USD)</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 rounded-full bg-primary"></div>
+            <span className="text-muted-foreground">All-Time High (ATH)</span>
           </div>
           <div className="flex items-center space-x-2">
             <div className="w-3 h-3 rounded-full border-2 border-success"></div>
