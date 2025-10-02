@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { bitcoinPriceSchema, timeRangeSchema, insertPriceAlertSchema } from "@shared/schema";
+import { bitcoinPriceSchema, timeRangeSchema, insertPriceAlertSchema, insertPollVoteSchema } from "@shared/schema";
 
 const COINGECKO_API_KEY = process.env.COINGECKO_API_KEY || process.env.API_KEY;
 
@@ -327,6 +327,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error updating alert:', error);
       res.status(500).json({ message: 'Failed to update price alert' });
+    }
+  });
+
+  // Poll API
+  app.post("/api/poll/vote", async (req, res) => {
+    try {
+      const validation = insertPollVoteSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ message: 'Invalid vote data', errors: validation.error });
+      }
+
+      const vote = await storage.createPollVote(validation.data);
+      res.status(201).json(vote);
+    } catch (error) {
+      console.error('Error creating poll vote:', error);
+      res.status(500).json({ message: 'Failed to submit vote' });
+    }
+  });
+
+  app.get("/api/poll/results", async (req, res) => {
+    try {
+      const results = await storage.getPollResults();
+      res.json(results);
+    } catch (error) {
+      console.error('Error fetching poll results:', error);
+      res.status(500).json({ message: 'Failed to fetch poll results' });
     }
   });
 
