@@ -167,7 +167,7 @@ export default function Home() {
                     data-testid="button-subscribe"
                     disabled={subscribeMutation.isPending}
                   >
-                    {subscribeMutation.isPending ? "Subscribing..." : "Notify Me"}
+                    {subscribeMutation.isPending ? "Subscribing..." : "Wen $1M?"}
                   </Button>
                 </form>
               </div>
