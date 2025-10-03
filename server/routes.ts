@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { bitcoinPriceSchema, timeRangeSchema, insertPriceAlertSchema, insertPollVoteSchema } from "@shared/schema";
+import { bitcoinPriceSchema, timeRangeSchema, insertPriceAlertSchema, insertPollVoteSchema, insertEmailSubscriptionSchema } from "@shared/schema";
 
 const COINGECKO_API_KEY = process.env.COINGECKO_API_KEY || process.env.API_KEY;
 
@@ -353,6 +353,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error fetching poll results:', error);
       res.status(500).json({ message: 'Failed to fetch poll results' });
+    }
+  });
+
+  // Email Subscription API
+  app.post("/api/subscribe", async (req, res) => {
+    try {
+      const validation = insertEmailSubscriptionSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: validation.error.errors[0]?.message || 'Invalid email address'
+        });
+      }
+
+      const subscription = await storage.createEmailSubscription(validation.data);
+      res.status(201).json({ 
+        success: true,
+        message: 'Successfully subscribed! You\'ll be notified when Bitcoin reaches $1M.'
+      });
+    } catch (error: any) {
+      console.error('Error creating email subscription:', error);
+      // Check for unique constraint violation
+      if (error.message?.includes('unique') || error.code === '23505') {
+        return res.status(409).json({ message: 'This email is already subscribed' });
+      }
+      res.status(500).json({ message: 'Failed to subscribe. Please try again.' });
     }
   });
 

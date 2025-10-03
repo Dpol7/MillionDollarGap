@@ -1,4 +1,4 @@
-import { type BitcoinPrice, type HistoricalData, type CryptoPrice, type InsertPriceAlert, type PriceAlert, priceAlerts, type InsertPollVote, type PollVote, pollVotes } from "@shared/schema";
+import { type BitcoinPrice, type HistoricalData, type CryptoPrice, type InsertPriceAlert, type PriceAlert, priceAlerts, type InsertPollVote, type PollVote, pollVotes, type InsertEmailSubscription, type EmailSubscription, emailSubscriptions } from "@shared/schema";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { eq, sql as drizzleSql } from "drizzle-orm";
@@ -22,6 +22,8 @@ export interface IStorage {
   
   createPollVote(vote: InsertPollVote): Promise<PollVote>;
   getPollResults(): Promise<{ prediction: string; count: number }[]>;
+  
+  createEmailSubscription(subscription: InsertEmailSubscription): Promise<EmailSubscription>;
 }
 
 export class MemStorage implements IStorage {
@@ -91,6 +93,11 @@ export class MemStorage implements IStorage {
       .groupBy(pollVotes.prediction);
     
     return results;
+  }
+
+  async createEmailSubscription(subscription: InsertEmailSubscription): Promise<EmailSubscription> {
+    const [newSubscription] = await db.insert(emailSubscriptions).values(subscription).returning();
+    return newSubscription;
   }
 }
 

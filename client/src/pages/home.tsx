@@ -1,13 +1,48 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { BitcoinPrice } from "@shared/schema";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
+import { useState } from "react";
 
 export default function Home() {
+  const { toast } = useToast();
+  const [email, setEmail] = useState("");
+
   const { data: bitcoinPrice, isLoading } = useQuery<BitcoinPrice>({
     queryKey: ['/api/bitcoin/price'],
     refetchInterval: 30000,
   });
+
+  const subscribeMutation = useMutation({
+    mutationFn: async (email: string) => {
+      return await apiRequest('POST', '/api/subscribe', { email });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Successfully subscribed!",
+        description: "You'll be notified when Bitcoin reaches $1M.",
+      });
+      setEmail("");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Subscription failed",
+        description: error.message || "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (email) {
+      subscribeMutation.mutate(email);
+    }
+  };
 
   const targetPrice = 1000000;
   const currentPrice = bitcoinPrice?.price || 0;
@@ -102,6 +137,39 @@ export default function Home() {
                     </p>
                   </div>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Email Signup Section */}
+        <div className="mt-8">
+          <Card className="stat-card" data-testid="card-subscribe">
+            <CardContent className="p-8">
+              <div className="max-w-2xl mx-auto text-center">
+                <h3 className="text-xl sm:text-2xl font-bold mb-4">
+                  Sign up to be notified when $1M USD = 1 BTC
+                </h3>
+                <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3">
+                  <Input
+                    type="email"
+                    placeholder="Enter your email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className="flex-1"
+                    data-testid="input-email"
+                    disabled={subscribeMutation.isPending}
+                  />
+                  <Button 
+                    type="submit" 
+                    className="sm:w-auto"
+                    data-testid="button-subscribe"
+                    disabled={subscribeMutation.isPending}
+                  >
+                    {subscribeMutation.isPending ? "Subscribing..." : "Notify Me"}
+                  </Button>
+                </form>
               </div>
             </CardContent>
           </Card>
