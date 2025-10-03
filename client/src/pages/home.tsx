@@ -23,9 +23,6 @@ export default function Home() {
               <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center font-bold text-primary-foreground">
                 ₿
               </div>
-              <div>
-                <h1 className="text-lg font-bold">Bitcoin Status</h1>
-              </div>
             </div>
           </div>
         </div>
@@ -100,7 +97,7 @@ export default function Home() {
                     )}
                   </div>
                   <div className="text-right">
-                    <p className="text-muted-foreground">Goal</p>
+                    <p className="text-muted-foreground">$1M</p>
                     <p className="font-mono font-bold text-lg gradient-text" data-testid="text-goal">
                       $1,000,000
                     </p>
