@@ -36,22 +36,6 @@ export type CryptoPrice = z.infer<typeof cryptoPriceSchema>;
 export type HistoricalData = z.infer<typeof historicalDataSchema>;
 export type TimeRange = z.infer<typeof timeRangeSchema>;
 
-export const priceAlerts = pgTable("price_alerts", {
-  id: serial("id").primaryKey(),
-  targetPrice: numeric("target_price", { precision: 10, scale: 2 }).notNull(),
-  isActive: boolean("is_active").notNull().default(true),
-  triggered: boolean("triggered").notNull().default(false),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
-
-export const insertPriceAlertSchema = createInsertSchema(priceAlerts).omit({
-  id: true,
-  createdAt: true,
-});
-
-export type InsertPriceAlert = z.infer<typeof insertPriceAlertSchema>;
-export type PriceAlert = typeof priceAlerts.$inferSelect;
-
 export const pollVotes = pgTable("poll_votes", {
   id: serial("id").primaryKey(),
   prediction: varchar("prediction", { length: 50 }).notNull(),

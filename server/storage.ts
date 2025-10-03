@@ -1,4 +1,4 @@
-import { type BitcoinPrice, type HistoricalData, type CryptoPrice, type InsertPriceAlert, type PriceAlert, priceAlerts, type InsertPollVote, type PollVote, pollVotes, type InsertEmailSubscription, type EmailSubscription, emailSubscriptions } from "@shared/schema";
+import { type BitcoinPrice, type HistoricalData, type CryptoPrice, type InsertPollVote, type PollVote, pollVotes, type InsertEmailSubscription, type EmailSubscription, emailSubscriptions } from "@shared/schema";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { eq, sql as drizzleSql } from "drizzle-orm";
@@ -14,11 +14,6 @@ export interface IStorage {
   
   getMultiCryptoPrices(): Promise<CryptoPrice[]>;
   setMultiCryptoPrices(prices: CryptoPrice[]): Promise<void>;
-  
-  createPriceAlert(alert: InsertPriceAlert): Promise<PriceAlert>;
-  getPriceAlerts(): Promise<PriceAlert[]>;
-  deletePriceAlert(id: number): Promise<void>;
-  updatePriceAlert(id: number, triggered: boolean): Promise<void>;
   
   createPollVote(vote: InsertPollVote): Promise<PollVote>;
   getPollResults(): Promise<{ prediction: string; count: number }[]>;
@@ -59,23 +54,6 @@ export class MemStorage implements IStorage {
 
   async setMultiCryptoPrices(prices: CryptoPrice[]): Promise<void> {
     this.multiCryptoPrices = prices;
-  }
-
-  async createPriceAlert(alert: InsertPriceAlert): Promise<PriceAlert> {
-    const [newAlert] = await db.insert(priceAlerts).values(alert).returning();
-    return newAlert;
-  }
-
-  async getPriceAlerts(): Promise<PriceAlert[]> {
-    return await db.select().from(priceAlerts).orderBy(priceAlerts.createdAt);
-  }
-
-  async deletePriceAlert(id: number): Promise<void> {
-    await db.delete(priceAlerts).where(eq(priceAlerts.id, id));
-  }
-
-  async updatePriceAlert(id: number, triggered: boolean): Promise<void> {
-    await db.update(priceAlerts).set({ triggered }).where(eq(priceAlerts.id, id));
   }
 
   async createPollVote(vote: InsertPollVote): Promise<PollVote> {
