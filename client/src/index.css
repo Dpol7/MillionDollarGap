@@ -15,7 +15,7 @@
   --secondary-foreground: hsl(222, 47%, 11%);
   --muted: hsl(210, 40%, 96%);
   --muted-foreground: hsl(215, 16%, 47%);
-  --accent: hsl(228, 100%, 32%);
+  --accent: hsl(217, 91%, 60%);
   --accent-foreground: hsl(0, 0%, 100%);
   --destructive: hsl(0, 84%, 60%);
   --destructive-foreground: hsl(0, 0%, 100%);
@@ -78,7 +78,7 @@
 
 @layer components {
   .gradient-text {
-    background: linear-gradient(135deg, hsl(228, 100%, 32%), hsl(36, 100%, 50%));
+    background: linear-gradient(135deg, hsl(217, 91%, 60%), hsl(36, 100%, 50%));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
