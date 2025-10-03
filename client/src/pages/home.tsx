@@ -97,7 +97,6 @@ export default function Home() {
                     )}
                   </div>
                   <div className="text-right">
-                    <p className="text-muted-foreground">$1M</p>
                     <p className="font-mono font-bold text-lg gradient-text" data-testid="text-goal">
                       $1,000,000
                     </p>
