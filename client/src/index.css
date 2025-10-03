@@ -9,7 +9,7 @@
   --card-foreground: hsl(222, 47%, 11%);
   --popover: hsl(0, 0%, 100%);
   --popover-foreground: hsl(222, 47%, 11%);
-  --primary: hsl(28, 92%, 54%);
+  --primary: hsl(36, 100%, 50%);
   --primary-foreground: hsl(0, 0%, 100%);
   --secondary: hsl(210, 40%, 96%);
   --secondary-foreground: hsl(222, 47%, 11%);
@@ -21,7 +21,7 @@
   --destructive-foreground: hsl(0, 0%, 100%);
   --border: hsl(214, 32%, 91%);
   --input: hsl(214, 32%, 91%);
-  --ring: hsl(28, 92%, 54%);
+  --ring: hsl(36, 100%, 50%);
   --success: hsl(142, 71%, 45%);
   --chart-1: hsl(203.8863, 88.2845%, 53.1373%);
   --chart-2: hsl(159.7826, 100%, 36.0784%);
@@ -30,12 +30,12 @@
   --chart-5: hsl(341.4894, 75.2000%, 50.9804%);
   --sidebar: hsl(0, 0%, 100%);
   --sidebar-foreground: hsl(222, 47%, 11%);
-  --sidebar-primary: hsl(28, 92%, 54%);
+  --sidebar-primary: hsl(36, 100%, 50%);
   --sidebar-primary-foreground: hsl(0, 0%, 100%);
   --sidebar-accent: hsl(210, 40%, 96%);
   --sidebar-accent-foreground: hsl(222, 47%, 11%);
   --sidebar-border: hsl(214, 32%, 91%);
-  --sidebar-ring: hsl(28, 92%, 54%);
+  --sidebar-ring: hsl(36, 100%, 50%);
   --font-sans: Inter, system-ui, sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: JetBrains Mono, monospace;
@@ -78,7 +78,7 @@
 
 @layer components {
   .gradient-text {
-    background: linear-gradient(135deg, hsl(217, 91%, 60%), hsl(28, 92%, 54%));
+    background: linear-gradient(135deg, hsl(217, 91%, 60%), hsl(36, 100%, 50%));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -91,7 +91,7 @@
   }
   
   .stat-card:hover {
-    border-color: hsl(28, 92%, 54%, 0.5);
+    border-color: hsl(36, 100%, 50%, 0.5);
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   }
@@ -101,7 +101,7 @@
   }
   
   .time-selector-btn.active {
-    background: hsl(28, 92%, 54%);
+    background: hsl(36, 100%, 50%);
     color: hsl(0, 0%, 100%);
   }
   
