@@ -285,47 +285,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Add subscriber to Buttondown (sends double opt-in email automatically)
-      if (process.env.BUTTONDOWN_API_KEY) {
-        try {
-          const buttondownResponse = await fetch('https://api.buttondown.com/v1/subscribers', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Token ${process.env.BUTTONDOWN_API_KEY}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              email_address: validation.data.email,
-              // Don't set type - this enables double opt-in by default
-              // Subscriber will receive confirmation email automatically
-            }),
-          });
-
-          if (!buttondownResponse.ok) {
-            const errorData = await buttondownResponse.json();
-            console.error('Buttondown API error:', errorData);
-            
-            // Check if email already exists in Buttondown
-            if (buttondownResponse.status === 400 && errorData.email_address) {
-              return res.status(409).json({ message: 'This email is already subscribed' });
-            }
-            
-            throw new Error(`Buttondown API returned ${buttondownResponse.status}`);
-          }
-
-          const buttondownData = await buttondownResponse.json();
-          console.log('Subscriber added to Buttondown:', buttondownData.email_address);
-        } catch (buttondownError) {
-          console.error('Error adding to Buttondown:', buttondownError);
-          // Continue to save in database even if Buttondown fails
-        }
-      }
-
-      // Save to database for our records
       const subscription = await storage.createEmailSubscription(validation.data);
       res.status(201).json({ 
         success: true,
-        message: 'Check your email to confirm your subscription!'
+        message: 'Successfully subscribed! You\'ll be notified when Bitcoin reaches $1M.'
       });
     } catch (error: any) {
       console.error('Error creating email subscription:', error);
