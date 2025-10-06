@@ -78,7 +78,7 @@ export default function Home() {
               <h2 className="text-2xl sm:text-3xl font-bold mb-4">
                 Is Bitcoin $1 Million?
               </h2>
-              <p className="text-6xl sm:text-7xl font-bold gradient-text" data-testid="text-answer-no">
+              <p className="text-5xl sm:text-6xl font-bold gradient-text" data-testid="text-answer-no">
                 {randomNo}
               </p>
             </CardContent>
@@ -90,7 +90,7 @@ export default function Home() {
               <h2 className="text-2xl sm:text-3xl font-bold mb-4">
                 Will Bitcoin reach $1 Million?
               </h2>
-              <p className="text-6xl sm:text-7xl font-bold gradient-text" data-testid="text-answer-maybe">
+              <p className="text-5xl sm:text-6xl font-bold gradient-text" data-testid="text-answer-maybe">
                 {randomMaybe}
               </p>
             </CardContent>
