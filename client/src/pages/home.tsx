@@ -8,13 +8,33 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useState, useMemo } from "react";
 
+type Response = string | { type: 'gif', url: string, alt: string };
+
 export default function Home() {
   const { toast } = useToast();
   const [email, setEmail] = useState("");
 
-  // Random responses that change on each page load
-  const noResponses = ["No", "Nope", "No, Siree", "Not Today, Pal", "Negative", "Sadly, No", "My sources say no"];
-  const maybeResponses = ["Maybe", "Could Go Either Way", "There's a Chance", "Maybe yes, Maybe no", "Ask Again Later", "Cannot predict now", "Concentrate and ask again"];
+  // Random responses that change on each page load - can be text or GIFs
+  const noResponses: Response[] = [
+    "No", 
+    "Nope", 
+    "No, Siree", 
+    "Not Today, Pal", 
+    "Negative", 
+    "Sadly, No", 
+    "My sources say no"
+  ];
+  
+  const maybeResponses: Response[] = [
+    "Maybe", 
+    "Could Go Either Way", 
+    "There's a Chance", 
+    "Maybe yes, Maybe no", 
+    "Ask Again Later", 
+    "Cannot predict now", 
+    "Concentrate and ask again",
+    { type: 'gif', url: 'https://media.giphy.com/media/9y81i7SFuzhW8/giphy.gif', alt: 'So you\'re telling me there\'s a chance' }
+  ];
 
   const randomNo = useMemo(() => noResponses[Math.floor(Math.random() * noResponses.length)], []);
   const randomMaybe = useMemo(() => maybeResponses[Math.floor(Math.random() * maybeResponses.length)], []);
@@ -78,9 +98,20 @@ export default function Home() {
               <h2 className="text-2xl sm:text-3xl font-bold mb-4">
                 Is Bitcoin $1 Million?
               </h2>
-              <p className="text-5xl sm:text-6xl font-bold gradient-text" data-testid="text-answer-no">
-                {randomNo}
-              </p>
+              <div className="flex justify-center items-center" data-testid="text-answer-no">
+                {typeof randomNo === 'string' ? (
+                  <p className="text-5xl sm:text-6xl font-bold gradient-text">
+                    {randomNo}
+                  </p>
+                ) : (
+                  <img 
+                    src={randomNo.url} 
+                    alt={randomNo.alt} 
+                    className="max-w-full h-auto rounded-lg"
+                    style={{ maxHeight: '300px' }}
+                  />
+                )}
+              </div>
             </CardContent>
           </Card>
 
@@ -90,9 +121,20 @@ export default function Home() {
               <h2 className="text-2xl sm:text-3xl font-bold mb-4">
                 Will Bitcoin reach $1 Million?
               </h2>
-              <p className="text-5xl sm:text-6xl font-bold gradient-text" data-testid="text-answer-maybe">
-                {randomMaybe}
-              </p>
+              <div className="flex justify-center items-center" data-testid="text-answer-maybe">
+                {typeof randomMaybe === 'string' ? (
+                  <p className="text-5xl sm:text-6xl font-bold gradient-text">
+                    {randomMaybe}
+                  </p>
+                ) : (
+                  <img 
+                    src={randomMaybe.url} 
+                    alt={randomMaybe.alt} 
+                    className="max-w-full h-auto rounded-lg"
+                    style={{ maxHeight: '300px' }}
+                  />
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>
