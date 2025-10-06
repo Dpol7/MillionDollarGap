@@ -6,11 +6,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 export default function Home() {
   const { toast } = useToast();
   const [email, setEmail] = useState("");
+
+  // Random responses that change on each page load
+  const noResponses = ["No", "Nope", "No, Siree", "Not Today, Pal", "Negative", "Sadly, No", "My sources say no"];
+  const maybeResponses = ["Maybe", "Could Go Either Way", "There's a Chance", "Maybe yes, Maybe no", "Ask Again Later", "Cannot predict now", "Concentrate and ask again"];
+
+  const randomNo = useMemo(() => noResponses[Math.floor(Math.random() * noResponses.length)], []);
+  const randomMaybe = useMemo(() => maybeResponses[Math.floor(Math.random() * maybeResponses.length)], []);
 
   const { data: bitcoinPrice, isLoading } = useQuery<BitcoinPrice>({
     queryKey: ['/api/bitcoin/price'],
@@ -72,7 +79,7 @@ export default function Home() {
                 Is Bitcoin $1 Million?
               </h2>
               <p className="text-6xl sm:text-7xl font-bold gradient-text" data-testid="text-answer-no">
-                No
+                {randomNo}
               </p>
             </CardContent>
           </Card>
@@ -84,7 +91,7 @@ export default function Home() {
                 Will Bitcoin reach $1 Million?
               </h2>
               <p className="text-6xl sm:text-7xl font-bold gradient-text" data-testid="text-answer-maybe">
-                Maybe
+                {randomMaybe}
               </p>
             </CardContent>
           </Card>
