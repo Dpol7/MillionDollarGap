@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { bitcoinPriceSchema, timeRangeSchema, insertPollVoteSchema, insertEmailSubscriptionSchema } from "@shared/schema";
+import path from "path";
 
 const COINGECKO_API_KEY = process.env.COINGECKO_API_KEY || process.env.API_KEY;
 
@@ -170,6 +171,44 @@ async function fetchMultiCryptoPrices() {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Serve proper OG meta tags for social media crawlers (Twitter/X, Facebook, etc.)
+  app.get("/", (req, res, next) => {
+    const userAgent = req.headers['user-agent'] || '';
+    const isCrawler = /Twitterbot|facebookexternalhit|LinkedInBot|Slackbot|Discordbot|WhatsApp|TelegramBot/i.test(userAgent);
+    
+    if (!isCrawler) {
+      return next();
+    }
+
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const host = req.headers['x-forwarded-host'] || req.headers['host'];
+    const baseUrl = `${protocol}://${host}`;
+
+    res.status(200).set({ 'Content-Type': 'text/html' }).send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Is Bitcoin $1 Million?</title>
+  <meta name="description" content="Track Bitcoin's progress toward $1 million. Get notified when BTC reaches $1M." />
+  <meta property="og:title" content="Is Bitcoin $1 Million?" />
+  <meta property="og:description" content="Track Bitcoin's progress toward $1 million. Get notified when BTC reaches $1M." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="${baseUrl}" />
+  <meta property="og:image" content="${baseUrl}/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Is Bitcoin $1 Million?" />
+  <meta name="twitter:description" content="Track Bitcoin's progress toward $1 million. Get notified when BTC reaches $1M." />
+  <meta name="twitter:image" content="${baseUrl}/og-image.png" />
+</head>
+<body>
+  <h1>Is Bitcoin $1 Million? No.</h1>
+  <p>Track Bitcoin's progress toward $1 million. Get notified when BTC reaches $1M.</p>
+</body>
+</html>`);
+  });
+
   // Get current Bitcoin price
   app.get("/api/bitcoin/price", async (req, res) => {
     try {
