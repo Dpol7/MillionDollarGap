@@ -1,0 +1,288 @@
+IMPORTANT CORRECTION TO THE BLOCK MAP:
+
+The current visualization is getting the dots wrong.
+
+The dots are NOT decorative particles and they are NOT an approximation of the number of blocks.
+
+The visualization must represent a real one-to-one mapping between Bitcoin block heights and dots.
+
+CORE RULE:
+
+ONE DOT = ONE BLOCK HEIGHT.
+
+If the prediction range contains 526,001 block heights, the underlying visualization must represent exactly 526,001 unique blocks.
+
+Every block must have a deterministic identity.
+
+Example:
+
+Block #1,100,000 = one dot
+
+Block #1,100,001 = one dot
+
+Block #1,100,002 = one dot
+
+...
+
+Block #1,626,000 = one dot
+
+There must be no duplicated blocks and no missing blocks.
+
+DO NOT simply generate a random particle field.
+
+DO NOT generate a visually approximate number of dots.
+
+DO NOT use random positioning.
+
+DO NOT use random spacing.
+
+The visualization should be generated algorithmically from block height.
+
+==================================================
+VISUAL LAYOUT
+==================================================
+
+Because hundreds of thousands of dots cannot reasonably fit on one screen individually, use a deterministic grid/timeline layout.
+
+For example:
+
+Block #1,100,000
+Block #1,100,001
+Block #1,100,002
+Block #1,100,003
+...
+
+Each block gets a sequential position in the visualization.
+
+The visual position should be calculated from:
+
+index = block_height - start_block
+
+The block's position should then be:
+
+column = index % BLOCKS_PER_ROW
+
+row = floor(index / BLOCKS_PER_ROW)
+
+This means every block has exactly one location.
+
+DO NOT randomly position dots.
+
+==================================================
+ZOOM LEVELS
+==================================================
+
+At maximum zoom:
+
+Show individual blocks as individual dots.
+
+At lower zoom levels:
+
+DO NOT simply remove random dots.
+
+Instead, aggregate blocks into visual groups while preserving the underlying one-to-one data model.
+
+For example:
+
+Zoomed out:
+
+[ 1,000 blocks ]
+
+[ 1,000 blocks ]
+
+[ 1,000 blocks ]
+
+Zoomed in:
+
+● ● ● ● ● ● ● ● ● ●
+
+Every aggregated visual region must correspond to a known contiguous block range.
+
+==================================================
+BLOCK HEIGHT
+==================================================
+
+The block height is the primary key.
+
+Every dot must have:
+
+blockHeight
+
+status
+
+userId if claimed
+
+estimatedTime
+
+predictionDensity
+
+Example object:
+
+{
+  blockHeight: 1234567,
+  status: "available",
+  estimatedTime: "...",
+  predictionCountNearby: 124
+}
+
+==================================================
+CLAIMED BLOCKS
+==================================================
+
+If Block #1,234,567 is claimed:
+
+ONLY the dot representing Block #1,234,567 turns Bitcoin orange.
+
+Do not color neighboring dots orange.
+
+Do not create a random orange cluster.
+
+If Blocks:
+
+#1,234,567
+#1,234,568
+#1,234,569
+
+are all claimed, then exactly THREE adjacent dots should be orange.
+
+==================================================
+CURRENT USER
+==================================================
+
+If the current user's prediction is:
+
+Block #1,234,567
+
+highlight ONLY that exact block.
+
+Use a clearly distinguishable outline/glow.
+
+==================================================
+HOVER
+==================================================
+
+Hovering a dot must identify its exact block.
+
+Example:
+
+BLOCK #1,234,567
+
+Estimated arrival:
+
+July 2033
+
+Status:
+
+AVAILABLE
+
+The displayed block number must be calculated from the dot's actual underlying blockHeight.
+
+Do NOT estimate the block number based on visual position.
+
+==================================================
+MAP POSITION
+==================================================
+
+The map should be deterministic.
+
+Given the same:
+
+startBlock
+endBlock
+containerWidth
+zoomLevel
+
+the same blockHeight must always appear in the same location.
+
+This is essential.
+
+==================================================
+TIME AXIS
+==================================================
+
+The map should have a clear relationship to the future timeline.
+
+At full zoom:
+
+2028 ---------------- 2030 ---------------- 2032 ---------------- 2034 ---------------- 2036 ---------------- 2038
+
+The labels represent ESTIMATED calendar periods.
+
+The actual underlying coordinate system remains Bitcoin block height.
+
+==================================================
+NOW
+==================================================
+
+The current Bitcoin block height must have a clearly defined position.
+
+Example:
+
+CURRENT BLOCK:
+
+#920,000
+
+Everything before #920,000 is past.
+
+Everything after #920,000 is future.
+
+The NOW indicator should be calculated from block height, not from screen position.
+
+==================================================
+PERFORMANCE
+==================================================
+
+There may be 500,000+ blocks.
+
+Do NOT create 500,000 React DOM elements.
+
+Use Canvas or WebGL.
+
+However, the underlying data model must still conceptually contain one record/identity per block.
+
+Render only the blocks necessary for the current viewport/zoom level.
+
+Use spatial indexing / virtualization where appropriate.
+
+==================================================
+CRITICAL TEST
+==================================================
+
+Create an automated test that verifies:
+
+For a range:
+
+startBlock = 1,100,000
+endBlock = 1,101,000
+
+there are exactly:
+
+1,001 block identities.
+
+Verify:
+
+1,100,000 exists
+1,100,001 exists
+1,100,002 exists
+...
+1,101,000 exists
+
+Verify there are no duplicates.
+
+Verify there are no missing block heights.
+
+Verify every block maps to exactly one visual coordinate at maximum zoom.
+
+==================================================
+DO NOT FAKE THE MAP
+==================================================
+
+The map is the core product.
+
+It must be a genuine visualization of Bitcoin block heights.
+
+The dots should NOT merely look like a blockchain.
+
+They ARE the blockchain prediction field.
+
+This distinction is extremely important.

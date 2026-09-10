@@ -100,8 +100,10 @@ a { color: inherit; text-decoration: none; }
 .map-canvas-frame { height: 418px; touch-action: none; cursor: grab; }
 .map-canvas-frame:active { cursor: grabbing; }
 .block-canvas { display: block; }
-.map-axis { position: relative; height: 29px; margin: 0 16px; border-top: 1px solid rgba(242, 240, 235, .12); color: #777c83; font-family: var(--font-mono); font-size: 9px; }
-.map-axis span { position: absolute; top: 9px; transform: translateX(-50%); white-space: nowrap; }
+.map-axis { min-height: 39px; margin: 0 16px; padding-top: 8px; border-top: 1px solid rgba(242, 240, 235, .12); color: #777c83; font-family: var(--font-mono); font-size: 9px; }
+.axis-title { display: block; margin-bottom: 8px; color: #575d64; font-size: 8px; letter-spacing: .09em; }
+.axis-years { display: flex; justify-content: space-between; }
+.axis-years span { white-space: nowrap; }
 .map-card-footer { border-top: 1px solid rgba(242, 240, 235, .07); }
 .map-card-footer span { display: inline-flex; align-items: center; gap: 7px; }
 .status-pip { display: inline-block; width: 6px; height: 6px; border-radius: 50%; }
@@ -182,7 +184,7 @@ a { color: inherit; text-decoration: none; }
   .drag-hint { display: none; }
   .map-hover-readout { left: 10px; right: 10px; top: 53px; justify-content: space-between; }
   .map-axis { overflow: hidden; }
-  .map-axis span { font-size: 8px; }
+  .axis-years span { font-size: 8px; }
   .insight-grid { grid-template-columns: 1fr; }
   .selection-card, .distribution-card { padding: 20px; }
   .estimate-grid strong { font-size: 10px; }
