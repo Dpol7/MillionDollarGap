@@ -3,12 +3,15 @@ import {
   ArrowRight,
   ChevronDown,
   Crosshair,
+  LockKeyhole,
   Search,
   SlidersHorizontal,
   Sparkles,
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
+import { SignIn, useAuth } from "@clerk/react";
 import {
   blockToCoordinate,
   blockToTimelineX,
@@ -85,20 +88,35 @@ const CLAIMED_BLOCKS = [
   blockForDate(new Date("2037-09-01T00:00:00Z")),
 ];
 
-function isClaimed(block: number) {
+function isDemoClaimed(block: number) {
   return CLAIMED_BLOCKS.includes(block);
 }
+
+type LockedPrediction = {
+  id: number;
+  blockHeight: number;
+  estimatedArrival: string;
+  fiftyRange: string;
+  eightyRange: string;
+  lockedAt: string;
+};
+
+type LockStep = "closed" | "confirm" | "email" | "payment" | "success" | "account";
 
 function BlockCanvas({
   currentBlock,
   selectedBlock,
   highlightedRange,
+  claimedBlocks = [],
+  ownedBlock,
   viewMode,
   onSelect,
 }: {
   currentBlock: number;
   selectedBlock: number;
   highlightedRange: { startBlock: number; endBlock: number } | null;
+  claimedBlocks: number[];
+  ownedBlock: number | null;
   viewMode: ViewMode;
   onSelect: (block: number) => void;
 }) {
@@ -120,6 +138,7 @@ function BlockCanvas({
   const selectedCoordinate = blockToCoordinate(safeSelectedBlock, mapMin, blocksPerColumn);
   const rawNowX = blockToTimelineX(currentBlock, mapMin, blocksPerColumn, baseCellSize * zoom, pan.x);
   const visibleNowX = Math.min(viewport.width, Math.max(0, rawNowX));
+  const blockIsClaimed = (block: number) => isDemoClaimed(block) || claimedBlocks.includes(block);
 
   useEffect(() => {
     setPan({ x: 0, y: 0 });
@@ -202,15 +221,22 @@ function BlockCanvas({
             && block <= highlightedRange.endBlock;
           ctx.beginPath();
           ctx.arc(x, y, dotRadius, 0, Math.PI * 2);
-          ctx.fillStyle = isClaimed(block)
-            ? "#f7931a"
+          const isOwned = block === ownedBlock;
+          ctx.fillStyle = isOwned
+            ? "#9ee85f"
+            : blockIsClaimed(block)
+              ? "#f7931a"
             : inHighlightedDate
               ? "#238bff"
             : block < currentBlock
               ? "rgba(155,161,169,0.28)"
               : "rgba(215,220,226,0.76)";
           ctx.fill();
-          if (inHighlightedDate && !isClaimed(block)) {
+          if (isOwned) {
+            ctx.strokeStyle = "#c8ff91";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+          } else if (inHighlightedDate && !blockIsClaimed(block)) {
             ctx.strokeStyle = "rgba(123, 194, 255, 0.95)";
             ctx.lineWidth = 1;
             ctx.stroke();
@@ -285,7 +311,7 @@ function BlockCanvas({
     };
 
     draw();
-  }, [baseCellSize, blocksPerColumn, currentBlock, dimensions.columns, dimensions.rows, highlightedRange, hoveredBlock, mapMax, mapMin, pan, selectedBlock, selectedCoordinate.column, selectedCoordinate.row, viewMode, viewport, zoom]);
+  }, [baseCellSize, blocksPerColumn, claimedBlocks, currentBlock, dimensions.columns, dimensions.rows, highlightedRange, hoveredBlock, mapMax, mapMin, ownedBlock, pan, selectedBlock, selectedCoordinate.column, selectedCoordinate.row, viewMode, viewport, zoom]);
 
   const blockFromPointer = (event: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -387,7 +413,9 @@ function BlockCanvas({
         <div className="map-hover-readout" role="status">
           <span>{formatBlock(hoveredBlock)}</span>
           <span>{estimateBlock(hoveredBlock).likely}</span>
-          <span className={isClaimed(hoveredBlock) ? "orange-text" : "green-text"}>{isClaimed(hoveredBlock) ? "CLAIMED" : "AVAILABLE"}</span>
+          <span className={hoveredBlock === ownedBlock ? "green-text" : blockIsClaimed(hoveredBlock) ? "orange-text" : "green-text"}>
+            {hoveredBlock === ownedBlock ? "YOUR BLOCK" : blockIsClaimed(hoveredBlock) ? "CLAIMED" : "AVAILABLE"} · $1
+          </span>
         </div>
       )}
     </div>
@@ -415,6 +443,7 @@ const distribution = [
 
 export default function Home() {
   const mapSectionRef = useRef<HTMLElement>(null);
+  const { isLoaded: authLoaded, isSignedIn } = useAuth();
   const [selectedBlock, setSelectedBlock] = useState(() => years[5].block + Math.round(BLOCKS_PER_YEAR * 0.45));
   const [viewMode, setViewMode] = useState<ViewMode>("block");
   const [searchValue, setSearchValue] = useState("");
@@ -422,8 +451,14 @@ export default function Home() {
   const [targetDate, setTargetDate] = useState("");
   const [highlightedRange, setHighlightedRange] = useState<{ startBlock: number; endBlock: number } | null>(null);
   const [notice, setNotice] = useState("");
+  const [claimedBlocks, setClaimedBlocks] = useState<number[]>([]);
+  const [prediction, setPrediction] = useState<LockedPrediction | null>(null);
+  const [lockStep, setLockStep] = useState<LockStep>("closed");
+  const [lockError, setLockError] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
   const estimate = useMemo(() => estimateBlock(selectedBlock), [selectedBlock]);
-  const selectedIsClaimed = isClaimed(selectedBlock);
+  const selectedIsOwned = prediction?.blockHeight === selectedBlock;
+  const selectedIsClaimed = isDemoClaimed(selectedBlock) || claimedBlocks.includes(selectedBlock);
 
   useEffect(() => {
     if (window.location.hash !== "#map") return;
@@ -432,6 +467,23 @@ export default function Home() {
     });
     return () => window.cancelAnimationFrame(frame);
   }, []);
+
+  useEffect(() => {
+    if (!authLoaded) return;
+    Promise.all([
+      fetch("/api/prediction/locks", { credentials: "include" }).then((response) => response.json()),
+      fetch("/api/prediction/session", { credentials: "include" }).then((response) => response.json()),
+    ]).then(([locks, session]) => {
+      setClaimedBlocks(Array.isArray(locks.blocks) ? locks.blocks : []);
+      if (session.prediction) setPrediction(session.prediction);
+    }).catch(() => {
+      setNotice("The permanent-lock service is temporarily unavailable.");
+    });
+  }, [authLoaded, isSignedIn]);
+
+  useEffect(() => {
+    if (lockStep === "email" && isSignedIn) setLockStep("payment");
+  }, [isSignedIn, lockStep]);
 
   const selectBlock = (block: number) => {
     setSelectedBlock(block);
@@ -483,6 +535,54 @@ export default function Home() {
     setNotice(`Highlighted a 31-day candidate window around ${label}. Blue dots are candidates; orange dots are already claimed.`);
   };
 
+  const openLockFlow = () => {
+    setLockError("");
+    if (prediction) {
+      setLockStep("account");
+      return;
+    }
+    if (selectedIsClaimed) {
+      setNotice("That block is already claimed. Choose a gray or blue available block.");
+      return;
+    }
+    setLockStep("confirm");
+  };
+
+  const confirmSelection = () => {
+    setLockError("");
+    setLockStep(isSignedIn ? "payment" : "email");
+  };
+
+  const completeDemoPayment = async () => {
+    setIsProcessing(true);
+    setLockError("");
+    try {
+      const response = await apiRequest("POST", "/api/prediction/lock", {
+        blockHeight: selectedBlock,
+        estimatedArrival: estimate.likely,
+        fiftyRange: estimate.fifty,
+        eightyRange: estimate.eighty,
+      });
+      const locked = await response.json() as LockedPrediction;
+      setPrediction(locked);
+      setClaimedBlocks((blocks) => Array.from(new Set([...blocks, locked.blockHeight])));
+      setLockStep("success");
+    } catch (error) {
+      setLockError(error instanceof Error && error.message.includes("already")
+        ? "That block or account already has a permanent prediction."
+        : "The demo payment could not be completed. Please try again.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const viewMyBlock = () => {
+    if (!prediction) return;
+    setSelectedBlock(prediction.blockHeight);
+    setLockStep("closed");
+    window.setTimeout(() => mapSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 0);
+  };
+
   return (
     <div className="wen-app">
       <header className="site-header">
@@ -493,6 +593,7 @@ export default function Home() {
         <nav className="site-nav" aria-label="Main navigation">
           <a className="active" href="#map">Map</a>
           <a href="#about">About</a>
+          {prediction && <button type="button" onClick={() => setLockStep("account")}>My prediction</button>}
         </nav>
         <a className="header-cta" href="#make-prediction">
           Make a prediction <ArrowRight size={15} />
@@ -576,6 +677,8 @@ export default function Home() {
               currentBlock={DEMO_CURRENT_BLOCK}
               selectedBlock={selectedBlock}
               highlightedRange={highlightedRange}
+              claimedBlocks={claimedBlocks}
+              ownedBlock={prediction?.blockHeight ?? null}
               viewMode={viewMode}
               onSelect={selectBlock}
             />
@@ -588,7 +691,12 @@ export default function Home() {
 
         <section className="insight-grid page-width">
           <div className="selection-card">
-            <div className="card-label"><span className="section-kicker">03 / YOUR SELECTION</span><span className={selectedIsClaimed ? "status claimed" : "status"}>{selectedIsClaimed ? "CLAIMED" : "AVAILABLE"}</span></div>
+            <div className="card-label">
+              <span className="section-kicker">{selectedIsOwned ? "03 / YOUR PREDICTION" : "03 / YOUR SELECTION"}</span>
+              <span className={selectedIsOwned ? "status owned" : selectedIsClaimed ? "status claimed" : "status"}>
+                {selectedIsOwned ? "🔒 LOCKED" : selectedIsClaimed ? "CLAIMED" : "AVAILABLE"}
+              </span>
+            </div>
             <div className="selected-block">{formatBlock(selectedBlock)}</div>
             <p className="selection-lede">Your prediction is a block, not a date.</p>
             <div className="estimate-grid">
@@ -605,11 +713,14 @@ export default function Home() {
             <button
               type="button"
               className="lock-button"
-              onClick={() => setNotice("Locking is reserved for the Stage 4 test-payment flow. Your block is still previewed here for free.")}
+              disabled={selectedIsClaimed && !selectedIsOwned}
+              onClick={selectedIsOwned ? () => setLockStep("account") : openLockFlow}
             >
-              LOCK THIS BLOCK FOR $1 <ArrowRight size={16} />
+              {selectedIsOwned ? "VIEW MY PREDICTION" : selectedIsClaimed ? "BLOCK ALREADY CLAIMED" : "LOCK THIS BLOCK — $1"} <ArrowRight size={16} />
             </button>
-            <p className="estimate-disclaimer">Estimated from recent Bitcoin block production. Actual timing will vary.</p>
+            <p className="estimate-disclaimer">
+              {selectedIsOwned ? "Your prediction is permanently locked." : "Your prediction is permanent once locked. Estimated timing will vary."}
+            </p>
           </div>
 
           <div className="distribution-card">
@@ -645,10 +756,100 @@ export default function Home() {
         </section>
       </main>
 
+      {lockStep !== "closed" && (
+        <div className="lock-overlay" role="presentation" onMouseDown={(event) => {
+          if (event.target === event.currentTarget && lockStep !== "success") setLockStep("closed");
+        }}>
+          <section className="lock-modal" role="dialog" aria-modal="true" aria-labelledby="lock-modal-title">
+            <div className="modal-topline">
+              <span>LOCK YOUR BLOCK / TEST DEMO</span>
+              {lockStep !== "success" && <button type="button" onClick={() => setLockStep("closed")} aria-label="Close">×</button>}
+            </div>
+
+            {lockStep === "confirm" && (
+              <>
+                <span className="modal-step">01 / REVIEW</span>
+                <h2 id="lock-modal-title">LOCK YOUR PREDICTION?</h2>
+                <div className="modal-block">{formatBlock(selectedBlock)}</div>
+                <div className="modal-summary">
+                  <div><span>ESTIMATED ARRIVAL</span><strong>{estimate.likely}</strong></div>
+                  <div><span>50% LIKELY RANGE</span><strong>{estimate.fifty}</strong></div>
+                </div>
+                <p className="modal-warning">Once locked, this prediction cannot be changed or transferred.</p>
+                <div className="modal-actions">
+                  <button type="button" className="secondary-action" onClick={() => setLockStep("closed")}>← GO BACK</button>
+                  <button type="button" className="primary-action" onClick={confirmSelection}>LOCK THIS BLOCK</button>
+                </div>
+              </>
+            )}
+
+            {lockStep === "email" && (
+              <div className="clerk-lock-step">
+                <span className="modal-step">02 / VERIFIED ACCOUNT</span>
+                <h2 id="lock-modal-title">CREATE YOUR PREDICTION</h2>
+                <p className="modal-copy">Verify your email to save this permanent prediction. Your email is private and never appears on the map.</p>
+                <SignIn routing="hash" />
+              </div>
+            )}
+
+            {lockStep === "payment" && (
+              <>
+                <span className="modal-step">03 / DEMO PAYMENT</span>
+                <h2 id="lock-modal-title">LOCK {formatBlock(selectedBlock)}</h2>
+                <div className="demo-price">$1.00</div>
+                <div className="payment-ticket">
+                  <span>YOUR PREDICTION</span><strong>{formatBlock(selectedBlock)}</strong>
+                  <span>ESTIMATED</span><strong>{estimate.likely}</strong>
+                </div>
+                <p className="demo-auth-note">TEST / DEMO · NO CARD OR LIVE STRIPE PAYMENT</p>
+                {lockError && <p className="modal-error">{lockError}</p>}
+                <div className="modal-actions">
+                  <button type="button" className="secondary-action" onClick={() => setLockStep("confirm")}>← GO BACK</button>
+                  <button type="button" className="primary-action" disabled={isProcessing} onClick={completeDemoPayment}>
+                    {isProcessing ? "LOCKING…" : "LOCK MY BLOCK — $1"}
+                  </button>
+                </div>
+              </>
+            )}
+
+            {lockStep === "success" && prediction && (
+              <div className="success-content">
+                <span className="success-lock"><LockKeyhole size={30} /> BLOCK LOCKED</span>
+                <h2 id="lock-modal-title">{formatBlock(prediction.blockHeight)}</h2>
+                <p className="success-lede">You picked the block.</p>
+                <div className="modal-summary">
+                  <div><span>ESTIMATED ARRIVAL</span><strong>{prediction.estimatedArrival}</strong></div>
+                  <div><span>50% LIKELY RANGE</span><strong>{prediction.fiftyRange}</strong></div>
+                  <div><span>80% LIKELY RANGE</span><strong>{prediction.eightyRange}</strong></div>
+                </div>
+                <p className="modal-warning success">Your prediction is now permanently locked.</p>
+                <button type="button" className="primary-action full" onClick={viewMyBlock}>VIEW MY BLOCK</button>
+              </div>
+            )}
+
+            {lockStep === "account" && prediction && (
+              <>
+                <span className="modal-step">MY PREDICTION</span>
+                <h2 id="lock-modal-title">YOUR PREDICTION</h2>
+                <div className="modal-block">{formatBlock(prediction.blockHeight)}</div>
+                <span className="account-locked"><LockKeyhole size={14} /> LOCKED</span>
+                <div className="modal-summary">
+                  <div><span>ESTIMATED ARRIVAL</span><strong>{prediction.estimatedArrival}</strong></div>
+                  <div><span>50% LIKELY RANGE</span><strong>{prediction.fiftyRange}</strong></div>
+                  <div><span>80% LIKELY RANGE</span><strong>{prediction.eightyRange}</strong></div>
+                </div>
+                <p className="modal-warning">This prediction cannot be changed, transferred, released, or replaced.</p>
+                <button type="button" className="primary-action full" onClick={viewMyBlock}>VIEW ON MAP</button>
+              </>
+            )}
+          </section>
+        </div>
+      )}
+
       <footer className="site-footer page-width">
         <a className="brand" href="#top"><span className="brand-mark">₿</span><span>WEN BITCOIN <b>$1M?</b></span></a>
         <div className="footer-links"><a href="#about">About</a><a href="#map">Map</a><a href="#top">Back to top</a></div>
-        <span className="footer-status"><span className="status-pip green" /> STAGE 1 / DEMO</span>
+        <span className="footer-status"><span className="status-pip green" /> LOCK FLOW / DEMO</span>
       </footer>
     </div>
   );

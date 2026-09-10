@@ -1,10 +1,27 @@
-import type { Express } from "express";
+import type { Express, RequestHandler } from "express";
 import { createServer, type Server } from "http";
+import { getAuth } from "@clerk/express";
 import { storage } from "./storage";
-import { bitcoinPriceSchema, timeRangeSchema, insertPollVoteSchema, insertEmailSubscriptionSchema } from "@shared/schema";
+import { bitcoinPriceSchema, timeRangeSchema, insertPollVoteSchema, insertEmailSubscriptionSchema, lockBlockSchema } from "@shared/schema";
 import path from "path";
 
 const COINGECKO_API_KEY = process.env.COINGECKO_API_KEY || process.env.API_KEY;
+const RESERVED_DEMO_BLOCKS = new Set([1_061_880, 1_184_712, 1_267_944, 1_359_816, 1_491_576]);
+
+function publicPrediction(prediction: Awaited<ReturnType<typeof storage.getBlockLockForAccount>>) {
+  if (!prediction) return null;
+  return {
+    id: prediction.id,
+    blockHeight: prediction.blockHeight,
+    estimatedArrival: prediction.estimatedArrival,
+    fiftyRange: prediction.fiftyRange,
+    eightyRange: prediction.eightyRange,
+    lockedAt: prediction.lockedAt,
+  };
+}
+
+const asyncRoute = (handler: (...args: Parameters<RequestHandler>) => Promise<unknown>): RequestHandler =>
+  (req, res, next) => { void handler(req, res, next).catch(next); };
 
 interface CoinGeckoPrice {
   bitcoin: {
@@ -171,6 +188,40 @@ async function fetchMultiCryptoPrices() {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  app.get("/api/prediction/session", asyncRoute(async (req, res) => {
+    const { userId } = getAuth(req);
+    if (!userId) return res.json({ authenticated: false, prediction: null });
+    const account = await storage.getPredictionAccount(userId);
+    const prediction = account ? await storage.getBlockLockForAccount(account.id) : undefined;
+    res.json({ authenticated: true, prediction: publicPrediction(prediction) });
+  }));
+
+  app.get("/api/prediction/locks", asyncRoute(async (_req, res) => {
+    res.json({ blocks: await storage.getPublicBlockLocks() });
+  }));
+
+  app.post("/api/prediction/lock", asyncRoute(async (req, res) => {
+    const { userId } = getAuth(req);
+    if (!userId) return res.status(401).json({ message: "Verify your email before locking a block." });
+    const account = await storage.findOrCreatePredictionAccount(userId);
+    const validation = lockBlockSchema.safeParse(req.body);
+    if (!validation.success) return res.status(400).json({ message: "Invalid block prediction." });
+    if (RESERVED_DEMO_BLOCKS.has(validation.data.blockHeight)) {
+      return res.status(409).json({ message: "That block is already claimed. Please choose another block." });
+    }
+    try {
+      const lock = await storage.createBlockLock(account.id, validation.data);
+      return res.status(201).json(publicPrediction(lock));
+    } catch (error: any) {
+      if (error?.code === "23505" || error?.message?.toLowerCase().includes("unique")) {
+        const existing = await storage.getBlockLockForAccount(account.id);
+        if (existing) return res.status(409).json({ message: "Your prediction is already permanently locked.", prediction: publicPrediction(existing) });
+        return res.status(409).json({ message: "That block was just claimed. Please choose another block." });
+      }
+      throw error;
+    }
+  }));
+
   // Serve proper OG meta tags for social media crawlers (Twitter/X, Facebook, etc.)
   app.get("/", (req, res, next) => {
     const userAgent = req.headers['user-agent'] || '';

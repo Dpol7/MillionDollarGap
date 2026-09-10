@@ -1,0 +1,308 @@
+BUILD THE COMPLETE "LOCK YOUR BLOCK" USER EXPERIENCE
+
+I want the process of claiming a Bitcoin block to feel simple, exciting, and permanent.
+
+The core message is:
+
+PICK YOUR BLOCK. LOCK IT IN.
+
+A user should be able to explore the map freely, select different blocks, and see their estimated timing before committing.
+
+STEP 1 — USER EXPLORES THE MAP
+
+The user lands on the map and sees all available blocks.
+
+Available blocks are gray.
+
+Claimed blocks are orange.
+
+The user's eventual block will be green.
+
+When the user hovers over a block:
+
+The dot becomes slightly larger/brighter.
+Show a small tooltip with:
+Block #1,287,421
+Estimated: May 2033
+Status: Available
+Lock price: $1
+
+The user can continue clicking different blocks without committing.
+
+STEP 2 — USER SELECTS A BLOCK
+
+When the user clicks a block, visually highlight it with a green ring.
+
+Open/update the selected-block panel.
+
+Show:
+
+BLOCK #1,287,421
+
+Estimated arrival
+May 2033
+
+50% likely range
+March – July 2033
+
+80% likely range
+January – October 2033
+
+Status
+Available
+
+Then show the CTA:
+
+LOCK THIS BLOCK — $1
+
+Below the button, add a small explanation:
+
+Your prediction is permanent once locked.
+
+Do NOT make the user feel like they have already claimed it.
+
+They have only selected it.
+
+STEP 3 — USER CAN CHANGE THEIR MIND
+
+Before clicking the lock button, the user can continue exploring.
+
+For example:
+
+Block #1,287,421 → selected
+
+Then they click:
+
+Block #1,295,000
+
+The selection changes to #1,295,000.
+
+The previous block immediately returns to its normal available state.
+
+The user can do this unlimited times before locking.
+
+STEP 4 — USER CLICKS "LOCK THIS BLOCK"
+
+When they click:
+
+LOCK THIS BLOCK — $1
+
+Open a confirmation modal.
+
+Do NOT immediately charge them.
+
+The modal should say:
+
+LOCK YOUR PREDICTION?
+
+Block #1,287,421
+
+Estimated arrival:
+
+May 2033
+
+50% likely range:
+
+March – July 2033
+
+Then:
+
+Once locked, this prediction cannot be changed or transferred.
+
+Buttons:
+
+← GO BACK
+
+LOCK THIS BLOCK
+
+Make the second button the obvious primary CTA.
+
+STEP 5 — ACCOUNT CREATION
+
+If the user isn't logged in, after confirming they want to lock the block, ask for their email.
+
+Screen:
+
+CREATE YOUR PREDICTION
+
+Enter your email to save your prediction.
+
+Email field:
+
+you@example.com
+
+Button:
+
+CONTINUE
+
+Use email verification or magic-link authentication.
+
+Do not require a password if a magic-link flow is easy to implement.
+
+Do not publicly display the user's email.
+
+STEP 6 — FINAL PAYMENT / DEMO
+
+For now, this is a DEMO PAYMENT FLOW.
+
+Do NOT connect live Stripe.
+
+Show:
+
+LOCK BLOCK #1,287,421
+
+$1.00
+
+Your prediction:
+
+#1,287,421
+
+Estimated:
+
+May 2033
+
+Then:
+
+LOCK MY BLOCK — $1
+
+For the demo, clicking this should simulate a successful payment.
+
+Clearly label the environment internally as TEST/DEMO.
+
+STEP 7 — SUCCESS
+
+After the demo payment succeeds, show a strong confirmation screen:
+
+🔒 BLOCK LOCKED
+#1,287,421
+
+You picked the block.
+
+Estimated arrival:
+
+May 2033
+
+Then show:
+
+50% likely range
+March – July 2033
+
+80% likely range
+January – October 2033
+
+Add:
+
+Your prediction is now permanently locked.
+
+Then button:
+
+VIEW MY BLOCK
+STEP 8 — RETURN TO THE MAP
+
+When the user clicks VIEW MY BLOCK:
+
+Take them back to the map.
+
+Their block should now be:
+
+GREEN
+
+with a strong green ring/glow.
+
+Show:
+
+YOUR BLOCK
+
+when hovering/selecting it.
+
+The selected-block panel should say:
+
+YOUR PREDICTION
+
+Block #1,287,421
+
+🔒 LOCKED
+
+Estimated arrival:
+
+May 2033
+
+STEP 9 — USER'S ACCOUNT
+
+Add a simple MY PREDICTION link/account area.
+
+When the user returns later, they should see:
+
+YOUR PREDICTION
+
+BLOCK #1,287,421
+
+🔒 Locked
+
+Estimated arrival:
+
+May 2033
+
+50% likely range:
+
+March – July 2033
+
+80% likely range:
+
+January – October 2033
+
+And:
+
+VIEW ON MAP
+
+There should be NO "CHANGE PREDICTION" BUTTON.
+
+IMPORTANT PRODUCT RULE
+
+The user is allowed to browse and select unlimited blocks before locking.
+
+But once they click the final confirmation and the demo payment succeeds:
+
+THE BLOCK IS PERMANENTLY LOCKED.
+
+They cannot:
+
+Change it
+Transfer it
+Release it
+Claim another block
+
+The database must enforce this server-side.
+
+VISUAL EXPERIENCE
+
+The experience should feel like buying a seat on a highly desirable event:
+
+Explore → Select → Review → Lock → Celebrate
+
+Do not make it feel like a boring registration form.
+
+The map should remain visible throughout as much as possible.
+
+The user should always understand:
+
+"This is the exact block I am about to claim."
+
+And after completion:
+
+"This is my block."
+
+DO NOT BUILD YET
+
+Do not implement:
+
+Live Stripe
+Dynamic pricing
+Block trading
+Prediction changes
+Transfers
+Auctions
+
+Those will come later.
+
+For now, make the selection → confirmation → account → demo payment → permanent lock → return to map experience work perfectly.
