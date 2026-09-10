@@ -49,6 +49,7 @@ export function isBitcoinModelStats(value: unknown): value is BitcoinModelStats 
 
 const EPOCH = 2016;
 const TARGET = 600;
+const SHORT_TERM_WINDOW_BLOCKS = 144;
 const Z25 = 0.67448975;
 const Z90 = 1.28155157;
 
@@ -58,13 +59,21 @@ function forecastMoments(stats: BitcoinModelStats, distance: number) {
   let elapsed = 0;
   let variance = 0;
   let epoch = 0;
-  const observedRate = stats.epochAverageInterval * 0.7 + stats.meanInterval * 0.2 + stats.robustInterval * 0.1;
+  const shortTermRate = stats.rollingAverages.find(({ blocks }) => blocks === SHORT_TERM_WINDOW_BLOCKS)?.mean
+    ?? stats.meanInterval;
+  const epochRate = stats.epochAverageInterval;
   while (remaining > 0) {
     const epochCapacity = epoch === 0 ? Math.max(1, stats.epochRemaining) : EPOCH;
     const count = Math.min(epochCapacity, remaining);
-    // Current-epoch conditions persist until retarget; later epochs mean-revert.
-    const mean = epoch === 0 ? observedRate : TARGET + (observedRate - TARGET) * Math.exp(-epoch * 1.4);
-    elapsed += count * mean;
+    if (epoch === 0) {
+      // Use the most recent complete difficulty epoch as the primary rate.
+      // The latest 144 blocks are a transparent short-term adjustment for
+      // the immediate forecast only; after retarget, difficulty targets 600s.
+      const shortTermCount = Math.min(count, SHORT_TERM_WINDOW_BLOCKS);
+      elapsed += shortTermCount * shortTermRate + (count - shortTermCount) * epochRate;
+    } else {
+      elapsed += count * TARGET;
+    }
     // The current partial epoch uses observed block-level variance. Each later
     // epoch contributes an independent mean-rate variance calibrated from
     // historical difficulty epochs, so uncertainty combines by variance rather

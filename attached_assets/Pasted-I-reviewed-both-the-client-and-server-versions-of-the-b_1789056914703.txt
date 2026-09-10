@@ -1,0 +1,123 @@
+I reviewed both the client and server versions of the block estimation model.
+
+The overall architecture is correct and should be preserved.
+
+Do NOT rewrite the model from scratch.
+
+Make the following targeted improvements:
+
+1. Increase recent block sample
+
+Change:
+
+sampleBlocks = 504
+
+to:
+
+sampleBlocks = 2016
+
+We want one complete recent Bitcoin difficulty epoch for the recent block statistics rather than only approximately 3.5 days.
+
+Keep the existing validation for chronological continuity and duplicate heights.
+
+2. Preserve historical difficulty-epoch calibration
+
+Continue using the 3-year difficulty-adjustment history to calculate:
+
+epochIntervalStdDev
+
+This is important because it provides empirical information about how much complete difficulty epochs vary in their average block production.
+
+Do not replace this with an arbitrary percentage.
+
+3. Make the long-term model transparent
+
+The current code uses:
+
+epochAverageInterval * 0.7 + meanInterval * 0.2 + robustInterval * 0.1
+
+Do not use arbitrary fixed weights unless they are empirically justified.
+
+Prefer a transparent approach:
+
+Use the most recent complete difficulty-epoch average as the primary estimate.
+Use recent block-level statistics only as a short-term adjustment.
+After the next difficulty adjustment, update the estimate using the newly observed epoch.
+
+Document the reasoning in comments.
+
+4. Preserve the existing uncertainty framework
+
+Keep the existing:
+
+P10
+P25
+median
+P75
+P90
+
+outputs.
+
+These correspond to:
+
+50% range = P25–P75
+
+80% range = P10–P90
+
+Do not artificially narrow the ranges simply to make the UI look better.
+
+5. Test realistic distances
+
+After making the changes, output the estimates for:
+
+100 blocks
+1,000 blocks
+10,000 blocks
+50,000 blocks
+100,000 blocks
+250,000 blocks
+500,000 blocks
+
+For each, report:
+
+median date
+P25
+P75
+P10
+P90
+width of 50% range
+width of 80% range
+
+We need to make sure uncertainty grows gradually rather than exploding.
+
+6. Keep block height authoritative
+
+The block height is always exact.
+
+The date is always an estimate.
+
+Never modify a user's locked block height because the estimated date changes.
+
+7. Keep the UI warning
+
+Continue displaying:
+
+"Estimated from recent Bitcoin block production and network difficulty. Actual timing will vary."
+
+Do not describe these dates as guaranteed.
+
+8. Do not change the map
+
+Do not change:
+
+dot size
+dot positioning
+timeline
+zoom
+NOW indicator
+selected-block UI
+locked prediction UX
+
+This task is ONLY to calibrate the underlying block-to-date model.
+
+Run the full test suite and verify the production build before finishing.
