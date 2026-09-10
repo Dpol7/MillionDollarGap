@@ -6,7 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Bell, Trash2, Plus, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import type { PriceAlert } from "@shared/schema";
+
+type PriceAlert = {
+  id: number;
+  targetPrice: string;
+  isActive: boolean;
+  triggered: boolean;
+};
 
 export default function PriceAlertsCard() {
   const [newAlertPrice, setNewAlertPrice] = useState("");
