@@ -1,0 +1,1205 @@
+BUILD A REAL WORKING WEB APPLICATION
+
+Project name:
+
+WEN BITCOIN $1M?
+
+Core tagline:
+
+TICK TOCK.
+WHICH BLOCK?
+
+The site is an interactive Bitcoin prediction map.
+
+The user predicts WHICH BITCOIN BLOCK will be the first block associated with Bitcoin reaching $1,000,000.
+
+The BLOCK NUMBER is the actual prediction.
+
+The calendar date/time is ONLY an estimate of when that block is likely to occur.
+
+There is currently NO prize and NO payout.
+
+Users may preview any block for free.
+
+The current product concept is that a user can pay $1 to lock a block so that it becomes visibly claimed on the public map. Implement payments in TEST MODE ONLY until the owner has reviewed the legal/payment structure.
+
+The primary experience must be the interactive block map.
+
+Do not build this as a generic Bitcoin blog.
+
+The map and prediction experience ARE the website.
+
+==================================================
+1. DESIGN
+==================================================
+
+Use a premium, minimalist dark interface.
+
+Background:
+very dark charcoal / near black
+
+Primary accent:
+Bitcoin orange
+
+Typography:
+large, bold, clean sans-serif
+
+The website should feel like a sophisticated data visualization product.
+
+Do NOT use:
+
+- crypto rockets
+- laser eyes
+- generic Bitcoin coin graphics
+- excessive orange
+- cheesy crypto imagery
+- unnecessary marketing sections
+
+Keep the interface focused.
+
+Header:
+
+WEN BITCOIN $1M?
+
+Navigation:
+
+Map
+About
+
+Right side:
+
+Make a Prediction
+
+Hero:
+
+TICK TOCK.
+WHICH BLOCK?
+
+Subheadline:
+
+Which Bitcoin block will be the first to take Bitcoin to $1,000,000?
+
+Then immediately show the prediction controls and map.
+
+==================================================
+2. THE CENTRAL CONCEPT
+==================================================
+
+The user is NOT primarily predicting a date.
+
+The user is predicting a Bitcoin BLOCK HEIGHT.
+
+Example:
+
+Block #1,234,567
+
+That block is the prediction.
+
+The website then estimates when that block might occur.
+
+Make this distinction very clear.
+
+Example:
+
+YOUR PREDICTION
+
+Block #1,234,567
+
+Estimated arrival
+
+June–August 2033
+
+Most likely:
+July 2033
+
+Do NOT imply that the estimated date is certain.
+
+==================================================
+3. BITCOIN BLOCK DATA
+==================================================
+
+Connect to a reliable Bitcoin blockchain API/provider.
+
+The application needs:
+
+- current block height
+- current latest block timestamp
+- historical block timestamps
+- block hash where appropriate
+
+The current blockchain height is the source of truth for the "NOW" indicator.
+
+Do NOT simulate the current block height once the application is live.
+
+The application should periodically update the current Bitcoin block height.
+
+For development, provide a mock/demo mode so the application can be tested without API credentials.
+
+Put blockchain API credentials in environment variables.
+
+Never expose API keys to the browser.
+
+==================================================
+4. FUTURE BLOCKS
+==================================================
+
+Future blocks do not exist yet.
+
+The prediction map therefore represents PROJECTED future block heights.
+
+The initial prediction window should cover approximately:
+
+2028 through 2038.
+
+Do NOT hard-code a permanent block range.
+
+Calculate the current block height first.
+
+Then calculate the projected block heights corresponding to the requested calendar window using Bitcoin's historical/current block production rate.
+
+The system must be designed so the window can move and update as the blockchain advances.
+
+==================================================
+5. THE BLOCK MAP
+==================================================
+
+This is the most important component.
+
+Create a large interactive visualization.
+
+Every dot represents ONE Bitcoin block.
+
+Example:
+
+2028
+● ● ● ● ● ● ● ● ● ●
+
+2029
+● ● ● ● ● ● ● ● ● ●
+
+2030
+● ● ● ● ● ● ● ● ● ●
+
+etc.
+
+Approximately 500,000+ future blocks may be represented.
+
+DO NOT render hundreds of thousands of individual heavy DOM elements.
+
+Use a performant visualization technique such as:
+
+- Canvas
+- WebGL
+- SVG only where appropriate
+- virtualized rendering
+
+The map must remain responsive.
+
+==================================================
+6. BLOCK STATES
+==================================================
+
+AVAILABLE BLOCK:
+
+muted light gray
+
+CLAIMED BLOCK:
+
+Bitcoin orange
+
+CURRENT USER'S BLOCK:
+
+bright green or another clearly distinguishable highlight
+
+HOVERED BLOCK:
+
+bright outline/glow
+
+PAST BLOCKS:
+
+visually fade/de-emphasize
+
+FUTURE BLOCKS:
+
+remain visible
+
+==================================================
+7. HOVER / TAP
+==================================================
+
+When a user hovers over a block on desktop, show a tooltip.
+
+On mobile, tapping a block should open a bottom sheet or card.
+
+Example:
+
+BLOCK #1,234,567
+
+Estimated arrival
+
+June–August 2033
+
+Most likely:
+July 2033
+
+Status:
+
+AVAILABLE
+
+Predictions nearby:
+124
+
+The user should be able to select that block.
+
+==================================================
+8. ESTIMATED TIME CALCULATION
+==================================================
+
+This is extremely important.
+
+DO NOT simply calculate:
+
+blocks remaining × 10 minutes
+
+and present the result as a precise date.
+
+Bitcoin blocks are not produced exactly every 10 minutes.
+
+The website should use actual recent Bitcoin block production data.
+
+Use a configurable recent-block lookback.
+
+Default:
+
+2,016 blocks
+
+Calculate:
+
+- average block interval
+- median block interval
+- variance / distribution of recent block intervals
+
+Use the actual recent block data to estimate future block timing.
+
+The system should produce:
+
+1. Most likely estimated date
+2. 50% probability range
+3. 80% probability range
+
+Example:
+
+BLOCK #1,234,567
+
+Most likely:
+July 2033
+
+50% likely:
+June–August 2033
+
+80% likely:
+April–November 2033
+
+Important:
+
+This is an ESTIMATE, not a guarantee.
+
+Display:
+
+"Estimated from recent Bitcoin block production. Actual timing will vary."
+
+==================================================
+9. PROBABILISTIC TIME MODEL
+==================================================
+
+Implement the time estimate using a transparent statistical model.
+
+For future blocks, model future block intervals using recent observed Bitcoin block-time data.
+
+A reasonable first implementation:
+
+- retrieve the most recent 2,016 actual block intervals
+- calculate the empirical distribution
+- simulate or statistically estimate cumulative time to the selected future block
+- calculate the median / most likely estimate
+- calculate the 25th/75th percentile for the 50% range
+- calculate the 10th/90th percentile for the 80% range
+
+The backend should perform this calculation rather than the browser doing expensive calculations.
+
+Cache the result.
+
+Recalculate when:
+
+- current block height changes materially
+- a new block data batch is available
+- the user selects a substantially different future block
+
+The model should be configurable.
+
+Create a settings/config object for:
+
+LOOKBACK_BLOCKS = 2016
+
+so this can be changed later.
+
+IMPORTANT:
+
+Because Bitcoin difficulty adjusts every 2016 blocks and future hash rate can change, do not claim this statistical model perfectly predicts future block timing.
+
+The UI should describe it as an estimate.
+
+==================================================
+10. ESTIMATED TIME TOGGLE
+==================================================
+
+Add:
+
+VIEW BY
+
+[ BLOCK ] [ ESTIMATED TIME ]
+
+BLOCK is the default.
+
+When the user chooses ESTIMATED TIME, translate the block positions into estimated calendar periods.
+
+Example:
+
+BLOCK VIEW
+
+#1,150,000
+#1,175,000
+#1,200,000
+#1,225,000
+
+TIME VIEW
+
+2032
+2033
+2034
+2035
+
+The underlying prediction remains the block number.
+
+==================================================
+11. BLOCK SEARCH
+==================================================
+
+Allow users to search directly for a block number.
+
+Example:
+
+[ # Enter block number ]
+
+User enters:
+
+1,234,567
+
+The map should navigate to and highlight that block.
+
+Display:
+
+Block #1,234,567
+
+Estimated arrival:
+
+July 2033
+
+Status:
+
+Available / Claimed
+
+==================================================
+12. MAP NAVIGATION
+==================================================
+
+Support:
+
+- zoom in
+- zoom out
+- pan
+- hover
+- click
+- search block
+- jump to year
+- jump to estimated date
+
+At full zoom-out:
+
+show approximately 2028–2038.
+
+At zoom-in:
+
+show individual blocks clearly.
+
+The user should be able to explore the map visually rather than having to use a form.
+
+==================================================
+13. NOW INDICATOR
+==================================================
+
+Add a vertical line labeled:
+
+NOW
+
+The NOW line represents the CURRENT BITCOIN BLOCK HEIGHT.
+
+As Bitcoin produces new blocks, NOW moves forward.
+
+Past blocks should gradually fade.
+
+Future blocks remain visible.
+
+This should create the feeling that the blockchain itself is moving through the prediction map.
+
+The site should feel alive.
+
+==================================================
+14. PREDICTION DISTRIBUTION
+==================================================
+
+Immediately below the main map, show:
+
+WHERE DOES THE CROWD THINK IT HAPPENS?
+
+This is NOT limited to the next 30 days.
+
+It covers the ENTIRE prediction period.
+
+Use a histogram / density visualization.
+
+X axis:
+
+2028 → 2038
+
+Y axis:
+
+Number of predictions
+
+If many users select blocks around 2033, the chart should visibly peak around 2033.
+
+Example:
+
+2028     2029     2030     2031     2032     2033     2034 ... 2038
+
+                         ▂
+                       ▅██▅
+                     ███████
+                   ███████████
+                 █████████████
+
+Hovering over the distribution should show:
+
+Estimated period
+Block range
+Number of predictions
+
+This graph must be generated from the real prediction database.
+
+==================================================
+15. CROWD INSIGHT
+==================================================
+
+Display a few very simple statistics near the distribution graph.
+
+Examples:
+
+MOST POPULAR YEAR
+
+2033
+
+32% of predictions
+
+EARLIEST PREDICTION
+
+2028
+
+LATEST PREDICTION
+
+2038
+
+Do not overload the interface with statistics.
+
+The map remains the primary experience.
+
+==================================================
+16. PREDICTION SELECTION
+==================================================
+
+A user can:
+
+1. click an available block
+2. search for a block number
+
+When selected:
+
+YOUR SELECTED BLOCK
+
+#1,234,567
+
+Estimated arrival
+
+July 2033
+
+50% likely:
+June–August 2033
+
+80% likely:
+April–November 2033
+
+Predictions nearby:
+
+±10 blocks: 3
+±100 blocks: 17
+±1,000 blocks: 184
+
+Status:
+
+AVAILABLE
+
+Then:
+
+LOCK THIS BLOCK FOR $1
+
+Also allow:
+
+PREVIEW WITHOUT PAYING
+
+==================================================
+17. FREE PREVIEW
+==================================================
+
+Users can explore the entire map without paying.
+
+They can:
+
+- hover blocks
+- click blocks
+- see estimated timing
+- see crowd density
+- search blocks
+
+They do not need an account just to explore.
+
+==================================================
+18. LOCKING A BLOCK
+==================================================
+
+The current concept is:
+
+Preview for free.
+
+Pay $1 to lock the selected block.
+
+A locked block becomes:
+
+BITCOIN ORANGE
+
+on the public map.
+
+The user gets:
+
+YOUR BLOCK
+
+#1,234,567
+
+LOCKED
+
+The system records:
+
+user
+block
+timestamp
+payment
+prediction history
+
+Implement Stripe in TEST MODE ONLY.
+
+Do not activate live payments.
+
+Keep payment logic modular so it can be enabled later.
+
+Do not make claims about whether the payment mechanism is legally a contest, sweepstakes, gambling, or anything else.
+
+Legal review will happen separately.
+
+==================================================
+19. CHANGING PREDICTIONS
+==================================================
+
+IMPORTANT:
+
+Users SHOULD be allowed to change their prediction over time.
+
+Each user can have ONE active prediction.
+
+Example:
+
+Current:
+
+Block #1,234,567
+
+User changes it to:
+
+Block #1,250,000
+
+Then:
+
+#1,234,567 becomes AVAILABLE again
+
+#1,250,000 becomes CLAIMED
+
+The user's previous prediction is retained in prediction history.
+
+Do NOT delete historical records.
+
+Show:
+
+PREDICTION HISTORY
+
+September 2026
+#1,180,000
+
+January 2027
+#1,210,000
+
+June 2027
+#1,250,000
+
+CURRENT PREDICTION
+
+#1,250,000
+
+If the user paid $1 to lock a block, do NOT automatically charge another $1 every time they change their prediction.
+
+The $1 lock should follow the user's active prediction.
+
+This behavior should be implemented in the database and clearly documented in code.
+
+==================================================
+20. USER ACCOUNT
+==================================================
+
+Keep registration extremely simple.
+
+Preferred:
+
+email + magic link
+
+or
+
+email verification.
+
+No complicated profile.
+
+Users need:
+
+user_id
+email
+created_at
+
+Prediction data:
+
+active block
+prediction history
+payment status
+
+Do not publicly expose email addresses.
+
+==================================================
+21. DATABASE
+==================================================
+
+Use a relational database.
+
+Tables:
+
+users
+
+predictions
+
+prediction_history
+
+payments
+
+audit_log
+
+Suggested users:
+
+id
+email
+created_at
+updated_at
+
+predictions:
+
+id
+user_id
+block_height
+status
+created_at
+updated_at
+locked_at
+
+prediction_history:
+
+id
+user_id
+block_height
+action
+created_at
+
+payments:
+
+id
+user_id
+prediction_id
+amount
+currency
+stripe_payment_id
+status
+created_at
+
+audit_log:
+
+id
+user_id
+action
+old_value
+new_value
+created_at
+
+IMPORTANT DATABASE RULES:
+
+A user can have only ONE active prediction.
+
+A block can have only ONE active claimed prediction.
+
+Use database constraints and transactions to prevent race conditions.
+
+Two people attempting to claim the same block at the same time must not both succeed.
+
+==================================================
+22. PREDICTION HISTORY
+==================================================
+
+Every prediction change should be recorded.
+
+Never overwrite historical prediction records.
+
+Example:
+
+User originally selected:
+
+#1,180,000
+
+Then:
+
+#1,220,000
+
+Then:
+
+#1,245,000
+
+The database retains all three.
+
+The public map only shows the current active prediction.
+
+==================================================
+23. MAP CONCENTRATION
+==================================================
+
+Calculate crowd concentration dynamically.
+
+For a selected block show:
+
+Predictions within ±10 blocks
+Predictions within ±100 blocks
+Predictions within ±1,000 blocks
+
+Also calculate:
+
+most concentrated block ranges
+most popular year
+most popular month
+most popular estimated period
+
+Use efficient database queries and indexes.
+
+Do not query the entire prediction table on every mouse movement.
+
+==================================================
+24. RESPONSIVE DESIGN
+==================================================
+
+Desktop:
+
+large interactive map
+
+Mobile:
+
+map remains usable.
+
+On mobile:
+
+tap rather than hover
+
+selected block opens bottom sheet
+
+horizontal map navigation
+
+pinch/zoom where possible
+
+The prediction flow should be extremely simple.
+
+==================================================
+25. HOMEPAGE
+==================================================
+
+Keep the homepage SHORT.
+
+HEADER
+
+WEN BITCOIN $1M?
+
+Map
+About
+
+Make a Prediction
+
+HERO
+
+TICK TOCK.
+WHICH BLOCK?
+
+Which Bitcoin block will be the first to take Bitcoin to $1,000,000?
+
+PREDICTION CONTROL
+
+Search/select block
+
+MAIN MAP
+
+The 2028–2038 projected block field.
+
+CROWD DISTRIBUTION
+
+WHERE DOES THE CROWD THINK IT HAPPENS?
+
+SELECTED BLOCK
+
+Your selected block
+Estimated timing
+Prediction density
+Lock for $1
+
+FOOTER
+
+WEN BITCOIN $1M?
+
+FAQ
+Terms
+Privacy
+Contact
+
+Do NOT add:
+
+large marketing sections
+research articles
+sponsor sections
+long explanations
+generic Bitcoin content
+
+Those can be added later.
+
+The prediction map is the product.
+
+==================================================
+26. ABOUT PAGE
+==================================================
+
+Simple explanation:
+
+Bitcoin produces blocks continuously.
+
+We ask one question:
+
+Which block will be the first to take Bitcoin to $1,000,000?
+
+The prediction is based on block height.
+
+The estimated calendar date is calculated separately and can change as actual Bitcoin block production changes.
+
+Explain that block times vary and the estimated date is not guaranteed.
+
+==================================================
+27. ADMIN DASHBOARD
+==================================================
+
+Create a protected admin page.
+
+Show:
+
+Total users
+Total predictions
+Active claimed blocks
+Available blocks
+Most popular year
+Most popular month
+Most popular block ranges
+Prediction distribution
+Prediction changes
+Test-mode payment totals
+
+Allow the administrator to inspect individual prediction history.
+
+Do NOT allow silent deletion or alteration of historical predictions.
+
+Record administrative actions in audit_log.
+
+==================================================
+28. PERFORMANCE
+==================================================
+
+This application needs to handle potentially hundreds of thousands of block dots.
+
+Do NOT create one React DOM component per block.
+
+Use:
+
+Canvas
+WebGL
+or another efficient visualization method.
+
+Only render the level of detail necessary for the current zoom level.
+
+When zoomed out:
+
+aggregate visually where appropriate.
+
+When zoomed in:
+
+show individual blocks.
+
+The user must be able to smoothly pan and zoom.
+
+==================================================
+29. DATA CACHING
+==================================================
+
+Cache blockchain data.
+
+Do not call the blockchain API every time someone hovers over a block.
+
+Create backend endpoints for:
+
+current blockchain state
+block estimate
+prediction density
+map data
+selected block
+
+Use caching where appropriate.
+
+==================================================
+30. LIVE UPDATES
+==================================================
+
+The site should periodically check for new Bitcoin blocks.
+
+When a new block is detected:
+
+update current block height
+
+move the NOW marker
+
+recalculate future timing estimates
+
+update affected UI
+
+The site does not need second-by-second updates.
+
+A reasonable polling interval is acceptable.
+
+==================================================
+31. IMPORTANT DISTINCTION
+==================================================
+
+The website should NEVER imply:
+
+"Block #1,234,567 will happen at exactly 2:37 PM."
+
+Instead say:
+
+"Estimated arrival"
+
+and provide a range.
+
+Example:
+
+MOST LIKELY
+
+July 2033
+
+50% RANGE
+
+June–August 2033
+
+80% RANGE
+
+April–November 2033
+
+This is one of the defining features of the application.
+
+==================================================
+32. $1 PAYMENT LANGUAGE
+==================================================
+
+Do NOT use:
+
+"No payout — just pride."
+
+Do NOT use:
+
+"Why $1?"
+
+Do NOT make the homepage explain the $1 extensively.
+
+The button can simply say:
+
+LOCK THIS BLOCK FOR $1
+
+The user can preview for free.
+
+The purpose of the $1 locking mechanism is simply to distinguish a publicly claimed block from an unclaimed block.
+
+Legal/payment language should remain configurable.
+
+==================================================
+33. VISUAL LANGUAGE
+==================================================
+
+The main visual metaphor is:
+
+A field of Bitcoin blocks moving toward the future.
+
+Orange blocks:
+claimed
+
+Gray blocks:
+available
+
+Green/highlight:
+your block
+
+Vertical line:
+NOW
+
+The map should feel almost like a living Bitcoin constellation.
+
+The concentration graph below the map should show where human predictions are clustering.
+
+==================================================
+34. INITIAL DEVELOPMENT
+==================================================
+
+Build this in stages.
+
+STAGE 1
+
+Build:
+
+- design
+- map
+- block visualization
+- hover
+- selection
+- estimated timing
+- crowd distribution using mock data
+
+STAGE 2
+
+Add:
+
+- real Bitcoin block data
+- NOW indicator
+- dynamic estimates
+
+STAGE 3
+
+Add:
+
+- database
+- users
+- predictions
+- prediction history
+
+STAGE 4
+
+Add:
+
+- Stripe TEST MODE
+- $1 locking
+- claimed block states
+
+STAGE 5
+
+Add:
+
+- admin dashboard
+- analytics
+- production hardening
+
+==================================================
+35. DEMO MODE
+==================================================
+
+Before API keys and database are configured, the application should still run.
+
+Create a DEMO MODE with:
+
+mock current block height
+mock future blocks
+mock claimed predictions
+mock crowd distribution
+
+Make it obvious in the development environment that the data is simulated.
+
+Once environment variables are supplied, switch to real data.
+
+==================================================
+36. QUALITY BAR
+==================================================
+
+This must be a REAL WORKING APPLICATION.
+
+Do NOT create a static HTML mockup that only looks functional.
+
+I need:
+
+- working interactions
+- working map
+- working hover
+- working block selection
+- working estimated timing
+- working database
+- working prediction changes
+- working claim state
+- working test payment
+- working crowd distribution
+- working mobile experience
+
+Write clean, maintainable code.
+
+Use environment variables for secrets.
+
+Create clear README documentation explaining:
+
+how to run locally
+how to configure database
+how to configure Bitcoin API
+how to configure Stripe test mode
+how to deploy
+how to switch from demo mode to real mode
+
+Start by building Stage 1 and show me the working application before moving to later stages.
