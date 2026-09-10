@@ -29,7 +29,7 @@ function blockForDate(date: Date) {
   return Math.round(DEMO_CURRENT_BLOCK + (date.getTime() - DEMO_NOW.getTime()) / BLOCK_INTERVAL_MS);
 }
 
-const MAP_START_BLOCK = blockForDate(new Date("2028-01-01T00:00:00Z"));
+const MAP_START_BLOCK = DEMO_CURRENT_BLOCK;
 const MAP_END_BLOCK = blockForDate(WINDOW_END);
 const MAP_BLOCK_COUNT = MAP_END_BLOCK - MAP_START_BLOCK + 1;
 
@@ -503,7 +503,7 @@ export default function Home() {
           </div>
           <div className="map-card">
             <div className="map-card-topline">
-              <span>2028 — 2038 / CHRONOLOGICAL BLOCK FIELD</span>
+              <span>NOW — 2038 / CHRONOLOGICAL BLOCK FIELD</span>
               <span><SlidersHorizontal size={14} /> SCROLL TO EXPLORE</span>
             </div>
             <BlockCanvas currentBlock={DEMO_CURRENT_BLOCK} selectedBlock={selectedBlock} viewMode={viewMode} onSelect={selectBlock} />
