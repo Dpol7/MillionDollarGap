@@ -100,10 +100,14 @@ a { color: inherit; text-decoration: none; }
 .map-canvas-frame { height: 418px; touch-action: none; cursor: grab; }
 .map-canvas-frame:active { cursor: grabbing; }
 .block-canvas { display: block; }
-.map-axis { min-height: 39px; margin: 0 16px; padding-top: 8px; border-top: 1px solid rgba(242, 240, 235, .12); color: #777c83; font-family: var(--font-mono); font-size: 9px; }
-.axis-title { display: block; margin-bottom: 8px; color: #575d64; font-size: 8px; letter-spacing: .09em; }
-.axis-years { display: flex; justify-content: space-between; }
-.axis-years span { white-space: nowrap; }
+.map-axis { position: relative; min-height: 48px; margin: 0; padding-top: 8px; border-top: 1px solid rgba(242, 240, 235, .12); color: #777c83; font-family: var(--font-mono); font-size: 9px; }
+.axis-title { display: block; margin: 0 16px 8px; color: #575d64; font-size: 8px; letter-spacing: .09em; }
+.axis-years { position: relative; height: 18px; }
+.axis-years span { position: absolute; white-space: nowrap; transform: translateX(-50%); }
+.axis-years span:first-child { transform: none; }
+.axis-years span:last-child { transform: translateX(-100%); }
+.now-axis-line { position: absolute; bottom: 0; width: 1px; height: 23px; background: #f7931a; transform: translateX(-50%); }
+.now-axis-line b { position: absolute; bottom: 25px; left: 5px; color: #f7931a; font-size: 8px; font-weight: 600; white-space: nowrap; }
 .map-card-footer { border-top: 1px solid rgba(242, 240, 235, .07); }
 .map-card-footer span { display: inline-flex; align-items: center; gap: 7px; }
 .status-pip { display: inline-block; width: 6px; height: 6px; border-radius: 50%; }

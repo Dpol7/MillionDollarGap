@@ -1,0 +1,124 @@
+IMPORTANT: MAKE THE BLOCK DOTS LOOK LIKE A TICKETMASTER SEATING CHART
+
+The current block map is wrong because the dots are too small and visually disappear.
+
+I want the interaction and visual density to feel much more like a Ticketmaster/SeatGeek interactive seating chart:
+
+Every Bitcoin block is represented by a clearly visible circular dot
+Each dot must be individually clickable/hoverable
+Dots should have enough spacing that the user can distinguish individual blocks
+Do NOT render hundreds of thousands of tiny 1px dots that visually merge into lines
+The map should feel like a field of individual selectable objects, similar to individual seats on a seating chart
+DOT SIZE
+
+Use a zoom-dependent dot size:
+
+Fully zoomed out: approximately 3–4 px diameter
+Normal/default zoom: approximately 5–7 px diameter
+Zoomed in: approximately 8–12 px diameter
+Never allow dots to become smaller than ~3 px
+Maintain a small but obvious gap between neighboring dots
+
+The important visual rule is:
+
+DOT SIZE + GAP must remain large enough for the user to perceive individual blocks.
+
+Do NOT try to fit all 526,000 dots into the visible screen at their minimum mathematical size. The map should be zoomable, exactly like a ticket seating chart.
+
+SPACING
+
+Each dot should occupy a consistent grid cell:
+
+cellSize = dotSize + gap
+
+Start with approximately:
+
+dotSize = 6px
+
+gap = 3px
+
+Therefore each block gets approximately a 9px × 9px cell at normal zoom.
+
+The exact pixel dimensions can change with zoom, but the relationship between blocks must remain deterministic.
+
+MOST IMPORTANT: ONE DOT = ONE BLOCK
+
+Do NOT randomly scatter dots.
+
+Do NOT use decorative particles.
+
+Do NOT use a heatmap as a replacement for the individual blocks.
+
+Every dot must correspond to exactly one block height.
+
+For example:
+
+#1,200,000
+#1,200,001
+#1,200,002
+#1,200,003
+etc.
+
+The block height is the primary key for the dot.
+
+TICKETMASTER-STYLE ZOOM
+
+Implement the map like an interactive seating chart:
+
+User sees the entire 2028–2038 timeline at a useful overview level.
+Individual dots are still visible.
+User can zoom in with mouse wheel / pinch.
+As they zoom in, the dots become larger and more separated.
+User can pan horizontally and vertically.
+Clicking a dot selects the exact Bitcoin block.
+Hovering a dot highlights it and shows the block number.
+The selected block gets a strong visual outline.
+TIMELINE
+
+The years must run horizontally across the bottom:
+
+2028 | 2029 | 2030 | 2031 | ... | 2038
+
+Do NOT put years on the left side as rows.
+
+The map is fundamentally a left-to-right timeline.
+
+NOW INDICATOR
+
+Add a vertical NOW line whose horizontal position corresponds to the current Bitcoin block's position within the 2028–2038 block range.
+
+As new Bitcoin blocks are mined, the NOW line moves to the right.
+
+Blocks to the left of NOW should gradually become visually subdued.
+
+PERFORMANCE
+
+Because there are hundreds of thousands of blocks, do NOT create hundreds of thousands of DOM elements.
+
+Use Canvas or WebGL.
+
+However, performance optimization must NOT destroy the visual requirement that individual dots are clearly visible.
+
+At high zoom levels, render individual blocks.
+
+At lower zoom levels, use efficient rendering techniques, but preserve the underlying one-block-to-one-coordinate mapping.
+
+TEST THIS BEFORE FINISHING
+
+Create a test range of exactly 1,001 blocks.
+
+Verify:
+
+1,001 blocks exist
+1,001 unique block heights exist
+every block has exactly one coordinate
+no duplicate blocks
+no missing blocks
+clicking a dot returns the correct block height
+zooming does not change the block's identity
+
+The visual goal is NOT "fit as many dots as possible."
+
+The visual goal is:
+
+"Make hundreds of thousands of Bitcoin blocks feel like individual selectable seats on a Ticketmaster seating chart."

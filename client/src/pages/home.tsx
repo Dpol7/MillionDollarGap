@@ -11,9 +11,8 @@ import {
 } from "lucide-react";
 import {
   blockToCoordinate,
+  blockToTimelineX,
   coordinateToBlock,
-  DEFAULT_BLOCKS_PER_ROW,
-  getContiguousRowRange,
   getGridDimensions,
 } from "@/lib/block-map-model";
 
@@ -30,8 +29,9 @@ function blockForDate(date: Date) {
   return Math.round(DEMO_CURRENT_BLOCK + (date.getTime() - DEMO_NOW.getTime()) / BLOCK_INTERVAL_MS);
 }
 
+const MAP_START_BLOCK = blockForDate(new Date("2028-01-01T00:00:00Z"));
 const MAP_END_BLOCK = blockForDate(WINDOW_END);
-const MAP_BLOCK_COUNT = MAP_END_BLOCK - DEMO_CURRENT_BLOCK + 1;
+const MAP_BLOCK_COUNT = MAP_END_BLOCK - MAP_START_BLOCK + 1;
 
 function formatBlock(block: number) {
   return `#${Math.round(block).toLocaleString("en-US")}`;
@@ -106,11 +106,34 @@ function BlockCanvas({
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [hoveredBlock, setHoveredBlock] = useState<number | null>(null);
+  const [viewport, setViewport] = useState({ width: 1200, height: 418 });
 
-  const mapMin = currentBlock;
+  const mapMin = MAP_START_BLOCK;
   const mapMax = MAP_END_BLOCK;
-  const dimensions = getGridDimensions(mapMin, mapMax, DEFAULT_BLOCKS_PER_ROW);
-  const cellSize = 6;
+  const baseCellSize = 9;
+  const defaultColumns = Math.max(24, Math.floor(viewport.width / baseCellSize));
+  const blocksPerColumn = Math.ceil(MAP_BLOCK_COUNT / defaultColumns);
+  const dimensions = getGridDimensions(mapMin, mapMax, blocksPerColumn);
+  const selectedCoordinate = blockToCoordinate(selectedBlock, mapMin, blocksPerColumn);
+  const rawNowX = blockToTimelineX(currentBlock, mapMin, blocksPerColumn, baseCellSize * zoom, pan.x);
+  const visibleNowX = Math.min(viewport.width, Math.max(0, rawNowX));
+
+  useEffect(() => {
+    setPan({ x: 0, y: 0 });
+  }, [selectedBlock]);
+
+  useEffect(() => {
+    const frame = frameRef.current;
+    if (!frame) return;
+    const updateViewport = () => {
+      const rect = frame.getBoundingClientRect();
+      setViewport({ width: Math.max(320, rect.width), height: Math.max(330, rect.height) });
+    };
+    updateViewport();
+    const observer = new ResizeObserver(updateViewport);
+    observer.observe(frame);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -132,13 +155,10 @@ function BlockCanvas({
       ctx.scale(dpr, dpr);
       ctx.clearRect(0, 0, width, height);
 
-      const worldWidth = dimensions.columns * cellSize;
-      const worldHeight = dimensions.rows * cellSize;
-      const baseScale = Math.min((width - 28) / worldWidth, (height - 42) / worldHeight);
-      const scale = baseScale * zoom;
-      const cellScreen = cellSize * scale;
-      const originX = 14 + pan.x;
-      const originY = 28 + pan.y;
+      const cellScreen = baseCellSize * zoom;
+      const worldHeight = dimensions.rows * cellScreen;
+      const originX = pan.x;
+      const originY = (height - worldHeight) / 2 + pan.y;
       const xForColumn = (column: number) => originX + column * cellScreen;
       const yForRow = (row: number) => originY + row * cellScreen;
 
@@ -150,135 +170,118 @@ function BlockCanvas({
       const visibleRowStart = Math.max(0, Math.floor((0 - originY) / cellScreen) - 1);
       const visibleRowEnd = Math.min(dimensions.rows - 1, Math.ceil((height - originY) / cellScreen) + 1);
 
-      if (cellScreen >= 2.2) {
-        // Maximum-detail rendering: every visible block is drawn at its one exact
-        // row-major coordinate. Blocks outside the viewport are virtualized.
+      // The field always renders individual visible blocks. Off-screen blocks
+      // retain deterministic coordinates but are virtualized.
+      const dotDiameter = Math.min(12, Math.max(3, 6 * zoom));
+      const dotRadius = dotDiameter / 2;
+      for (let column = visibleColumnStart; column <= visibleColumnEnd; column += 1) {
         for (let row = visibleRowStart; row <= visibleRowEnd; row += 1) {
-          for (let column = visibleColumnStart; column <= visibleColumnEnd; column += 1) {
-            const block = coordinateToBlock(row, column, mapMin, mapMax, DEFAULT_BLOCKS_PER_ROW);
-            if (block === null) continue;
-            const x = xForColumn(column) + cellScreen / 2;
-            const y = yForRow(row) + cellScreen / 2;
-            ctx.beginPath();
-            ctx.arc(x, y, Math.max(1, Math.min(3.1, cellScreen * 0.3)), 0, Math.PI * 2);
-            ctx.fillStyle = isClaimed(block) ? "#f7931a" : block < currentBlock ? "rgba(161,167,175,0.2)" : "rgba(215,220,226,0.78)";
-            ctx.fill();
-          }
-        }
-      } else {
-        // Overview rendering: each stripe is a known contiguous set of complete
-        // row ranges. No blocks are randomly sampled or omitted from the model.
-        const rowsPerStripe = Math.max(1, Math.ceil(1.2 / cellScreen));
-        for (let row = visibleRowStart; row <= visibleRowEnd; row += rowsPerStripe) {
-          const firstRange = getContiguousRowRange(row, mapMin, mapMax, DEFAULT_BLOCKS_PER_ROW);
-          const lastRow = Math.min(visibleRowEnd, row + rowsPerStripe - 1);
-          const lastRange = getContiguousRowRange(lastRow, mapMin, mapMax, DEFAULT_BLOCKS_PER_ROW);
-          if (!firstRange || !lastRange) continue;
-          const lastCoordinate = blockToCoordinate(lastRange.endBlock, mapMin, DEFAULT_BLOCKS_PER_ROW);
-          const stripeWidth = lastRow === row
-            ? (lastCoordinate.column + 1) * cellScreen
-            : dimensions.columns * cellScreen;
-          ctx.fillStyle = "rgba(215,220,226,0.34)";
-          ctx.fillRect(originX, yForRow(row), stripeWidth, Math.max(1, rowsPerStripe * cellScreen * 0.6));
+          const block = coordinateToBlock(row, column, mapMin, mapMax, blocksPerColumn);
+          if (block === null) continue;
+          const x = xForColumn(column) + cellScreen / 2;
+          const y = yForRow(row) + cellScreen / 2;
+          ctx.beginPath();
+          ctx.arc(x, y, dotRadius, 0, Math.PI * 2);
+          ctx.fillStyle = isClaimed(block)
+            ? "#f7931a"
+            : block < currentBlock
+              ? "rgba(155,161,169,0.28)"
+              : "rgba(215,220,226,0.76)";
+          ctx.fill();
         }
       }
 
-      // Year boundaries are calculated from their block heights, then mapped to
-      // the exact row in the deterministic grid.
+      // Year divisions are vertical because chronology advances by column.
+      // Labels remain exclusively on the bottom x-axis.
       for (let year = 2028; year <= 2038; year += 1) {
         const yearBlock = blockForDate(new Date(`${year}-01-01T00:00:00Z`));
-        const coordinate = blockToCoordinate(yearBlock, mapMin, DEFAULT_BLOCKS_PER_ROW);
-        const y = yForRow(coordinate.row);
-        if (y < 12 || y > height) continue;
+        const x = blockToTimelineX(yearBlock, mapMin, blocksPerColumn, cellScreen, pan.x);
+        if (x < -1 || x > width + 1) continue;
         ctx.strokeStyle = "rgba(247,147,26,0.25)";
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.moveTo(originX, y);
-        ctx.lineTo(originX + dimensions.columns * cellScreen, y);
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
         ctx.stroke();
-        ctx.fillStyle = "#f7931a";
-        ctx.font = "600 9px 'IBM Plex Mono', monospace";
-        ctx.fillText(viewMode === "block" ? formatBlock(yearBlock) : String(year), Math.max(7, originX), y - 4);
       }
+
+      // The global NOW marker belongs to the chronological x-axis, not to a
+      // density row. It is clamped to the left edge while NOW precedes 2028.
+      const timelineNowX = Math.min(width, Math.max(0, blockToTimelineX(currentBlock, mapMin, blocksPerColumn, cellScreen, pan.x)));
+      ctx.strokeStyle = "#f7931a";
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      ctx.moveTo(timelineNowX, 0);
+      ctx.lineTo(timelineNowX, height);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = "#f7931a";
+      ctx.font = "600 9px 'IBM Plex Mono', monospace";
+      ctx.fillText(currentBlock < mapMin ? "NOW · BEFORE 2028" : "NOW", Math.max(7, timelineNowX + 6), 14);
 
       // Claimed state is always attached to the one exact claimed block.
       for (const block of CLAIMED_BLOCKS) {
-        const coordinate = blockToCoordinate(block, mapMin, DEFAULT_BLOCKS_PER_ROW);
+        if (block < mapMin || block > mapMax) continue;
+        const coordinate = blockToCoordinate(block, mapMin, blocksPerColumn);
         const x = xForColumn(coordinate.column) + cellScreen / 2;
         const y = yForRow(coordinate.row) + cellScreen / 2;
         if (x < -4 || x > width + 4 || y < -4 || y > height + 4) continue;
         ctx.beginPath();
-        ctx.arc(x, y, Math.max(1.2, Math.min(3.2, cellScreen * 0.34)), 0, Math.PI * 2);
+        ctx.arc(x, y, dotRadius, 0, Math.PI * 2);
         ctx.fillStyle = "#f7931a";
         ctx.fill();
       }
 
-      const nowCoordinate = blockToCoordinate(currentBlock, mapMin, DEFAULT_BLOCKS_PER_ROW);
-      const nowX = xForColumn(nowCoordinate.column) + cellScreen / 2;
-      const nowY = yForRow(nowCoordinate.row) + cellScreen / 2;
-      if (nowX > -8 && nowX < width + 8 && nowY > -8 && nowY < height + 8) {
-        ctx.fillStyle = "#f7931a";
-        ctx.beginPath();
-        ctx.arc(nowX, nowY, Math.max(2.5, cellScreen * 0.45), 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = "#f7931a";
-        ctx.font = "600 9px 'IBM Plex Mono', monospace";
-        ctx.fillText("NOW", nowX + 7, Math.max(12, nowY + 3));
-      }
-
-      const selectedCoordinate = blockToCoordinate(selectedBlock, mapMin, DEFAULT_BLOCKS_PER_ROW);
       const selectedX = xForColumn(selectedCoordinate.column) + cellScreen / 2;
       const selectedY = yForRow(selectedCoordinate.row) + cellScreen / 2;
       if (selectedX > -8 && selectedX < width + 8 && selectedY > -8 && selectedY < height + 8) {
         ctx.strokeStyle = "#b5f36c";
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(selectedX, selectedY, Math.max(4, Math.min(7, cellScreen * 0.48)), 0, Math.PI * 2);
+        ctx.arc(selectedX, selectedY, dotRadius + 2.5, 0, Math.PI * 2);
         ctx.stroke();
       }
 
       if (hoveredBlock !== null) {
-        const hoveredCoordinate = blockToCoordinate(hoveredBlock, mapMin, DEFAULT_BLOCKS_PER_ROW);
+        const hoveredCoordinate = blockToCoordinate(hoveredBlock, mapMin, blocksPerColumn);
         const hoveredX = xForColumn(hoveredCoordinate.column) + cellScreen / 2;
         const hoveredY = yForRow(hoveredCoordinate.row) + cellScreen / 2;
         if (hoveredX > -8 && hoveredX < width + 8 && hoveredY > -8 && hoveredY < height + 8) {
           ctx.strokeStyle = "#ffffff";
-          ctx.lineWidth = 1;
+          ctx.lineWidth = 1.5;
           ctx.beginPath();
-          ctx.arc(hoveredX, hoveredY, Math.max(3, Math.min(6, cellScreen * 0.42)), 0, Math.PI * 2);
+          ctx.arc(hoveredX, hoveredY, dotRadius + 1.5, 0, Math.PI * 2);
           ctx.stroke();
         }
       }
     };
 
     draw();
-    const observer = new ResizeObserver(draw);
-    observer.observe(frame);
-    return () => observer.disconnect();
-  }, [cellSize, currentBlock, dimensions.columns, dimensions.rows, hoveredBlock, mapMax, mapMin, pan, selectedBlock, viewMode, zoom]);
+  }, [baseCellSize, blocksPerColumn, currentBlock, dimensions.columns, dimensions.rows, hoveredBlock, mapMax, mapMin, pan, selectedBlock, selectedCoordinate.column, selectedCoordinate.row, viewMode, viewport, zoom]);
 
   const blockFromPointer = (event: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
-    if (!canvas) return mapMin;
+    if (!canvas) return null;
     const rect = canvas.getBoundingClientRect();
-    const worldWidth = dimensions.columns * cellSize;
-    const worldHeight = dimensions.rows * cellSize;
-    const baseScale = Math.min((rect.width - 28) / worldWidth, (rect.height - 42) / worldHeight);
-    const cellScreen = cellSize * baseScale * zoom;
-    const column = Math.floor((event.clientX - rect.left - 14 - pan.x) / cellScreen);
-    const row = Math.floor((event.clientY - rect.top - 28 - pan.y) / cellScreen);
-    return coordinateToBlock(row, column, mapMin, mapMax, DEFAULT_BLOCKS_PER_ROW);
+    const cellScreen = baseCellSize * zoom;
+    const worldHeight = dimensions.rows * cellScreen;
+    const originX = pan.x;
+    const originY = (rect.height - worldHeight) / 2 + pan.y;
+    const column = Math.floor((event.clientX - rect.left - originX) / cellScreen);
+    const row = Math.floor((event.clientY - rect.top - originY) / cellScreen);
+    return coordinateToBlock(row, column, mapMin, mapMax, blocksPerColumn);
   };
 
   return (
     <div className="map-canvas-shell">
       <div className="map-controls" aria-label="Map controls">
         <div className="map-control-group">
-          <button type="button" className="icon-button" onClick={() => setZoom((value) => Math.max(1, value / 1.6))} aria-label="Zoom out">
+          <button type="button" className="icon-button" onClick={() => setZoom((value) => Math.max(0.55, value / 1.25))} aria-label="Zoom out">
             <ZoomOut size={15} />
           </button>
-          <span className="zoom-label">{zoom === 1 ? "FIT" : `${zoom.toFixed(1)}×`}</span>
-          <button type="button" className="icon-button" onClick={() => setZoom((value) => Math.min(48, value * 1.6))} aria-label="Zoom in">
+          <span className="zoom-label">{zoom === 1 ? "1×" : `${zoom.toFixed(2)}×`}</span>
+          <button type="button" className="icon-button" onClick={() => setZoom((value) => Math.min(2, value * 1.25))} aria-label="Zoom in">
             <ZoomIn size={15} />
           </button>
           <button type="button" className="icon-button" onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }} aria-label="Reset map">
@@ -295,11 +298,18 @@ function BlockCanvas({
           const rect = event.currentTarget.getBoundingClientRect();
           const cursorX = event.clientX - rect.left;
           const cursorY = event.clientY - rect.top;
-          const nextZoom = Math.min(48, Math.max(1, zoom * (event.deltaY > 0 ? 0.82 : 1.22)));
-          const ratio = nextZoom / zoom;
+          const oldCell = baseCellSize * zoom;
+          const oldWorldHeight = dimensions.rows * oldCell;
+          const oldOriginX = pan.x;
+          const oldOriginY = (rect.height - oldWorldHeight) / 2 + pan.y;
+          const worldColumn = (cursorX - oldOriginX) / oldCell;
+          const worldRow = (cursorY - oldOriginY) / oldCell;
+          const nextZoom = Math.min(2, Math.max(0.55, zoom * (event.deltaY > 0 ? 0.9 : 1.1)));
+          const nextCell = baseCellSize * nextZoom;
+          const nextBaseOriginY = (rect.height - dimensions.rows * nextCell) / 2;
           setPan({
-            x: cursorX - 14 - (cursorX - 14 - pan.x) * ratio,
-            y: cursorY - 28 - (cursorY - 28 - pan.y) * ratio,
+            x: cursorX - worldColumn * nextCell,
+            y: cursorY - nextBaseOriginY - worldRow * nextCell,
           });
           setZoom(nextZoom);
         }}
@@ -336,8 +346,14 @@ function BlockCanvas({
       </div>
       <div className="map-axis" aria-label="Estimated calendar timeline">
         <span className="axis-title">ESTIMATED TIME</span>
+        <span className="now-axis-line" style={{ left: `${visibleNowX}px` }}><b>{currentBlock < mapMin ? "NOW · BEFORE 2028" : "NOW"}</b></span>
         <div className="axis-years">
-          {[2028, 2030, 2032, 2034, 2036, 2038].map((year) => <span key={year}>{year}</span>)}
+          {Array.from({ length: 11 }, (_, index) => {
+            const year = 2028 + index;
+            const block = blockForDate(new Date(`${year}-01-01T00:00:00Z`));
+            const x = blockToTimelineX(block, mapMin, blocksPerColumn, baseCellSize * zoom, pan.x);
+            return <span key={year} style={{ left: `${x}px` }}>{year}</span>;
+          })}
         </div>
       </div>
       {hoveredBlock !== null && (
@@ -379,6 +395,14 @@ export default function Home() {
   const [notice, setNotice] = useState("");
   const estimate = useMemo(() => estimateBlock(selectedBlock), [selectedBlock]);
   const selectedIsClaimed = isClaimed(selectedBlock);
+
+  useEffect(() => {
+    if (window.location.hash !== "#map") return;
+    const frame = window.requestAnimationFrame(() => {
+      mapSectionRef.current?.scrollIntoView({ block: "start" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
 
   const selectBlock = (block: number) => {
     setSelectedBlock(block);
@@ -479,13 +503,13 @@ export default function Home() {
           </div>
           <div className="map-card">
             <div className="map-card-topline">
-              <span>NOW — 2038 / DETERMINISTIC BLOCK GRID</span>
+              <span>2028 — 2038 / CHRONOLOGICAL BLOCK FIELD</span>
               <span><SlidersHorizontal size={14} /> SCROLL TO EXPLORE</span>
             </div>
             <BlockCanvas currentBlock={DEMO_CURRENT_BLOCK} selectedBlock={selectedBlock} viewMode={viewMode} onSelect={selectBlock} />
             <div className="map-card-footer">
               <span><span className="status-pip orange" /> NOW IS {formatBlock(DEMO_CURRENT_BLOCK)}</span>
-              <span>{MAP_BLOCK_COUNT.toLocaleString("en-US")} UNIQUE BLOCKS / FIT: CONTIGUOUS GROUPS / ZOOM: ONE DOT EACH</span>
+              <span>{MAP_BLOCK_COUNT.toLocaleString("en-US")} UNIQUE BLOCKS / ONE DOT EACH / OFFSCREEN BLOCKS VIRTUALIZED</span>
             </div>
           </div>
         </section>

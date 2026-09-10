@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   blockToCoordinate,
+  blockToTimelineX,
   coordinateToBlock,
   createBlockHeights,
   getBlockCount,
@@ -40,4 +41,36 @@ test("every block maps to one reversible coordinate at maximum zoom", () => {
   }
 
   assert.equal(seenCoordinates.size, 1_001);
+});
+
+test("zoom changes pixels, never the identity at a grid coordinate", () => {
+  const startBlock = 1_100_000;
+  const endBlock = 1_101_000;
+  const blockHeight = 1_100_731;
+  const coordinate = blockToCoordinate(blockHeight, startBlock);
+
+  for (const zoom of [0.55, 1, 1.5, 2]) {
+    const cellSize = 9 * zoom;
+    const pixelX = coordinate.column * cellSize;
+    const pixelY = coordinate.row * cellSize;
+    const clickedColumn = Math.floor(pixelX / cellSize);
+    const clickedRow = Math.floor(pixelY / cellSize);
+    assert.equal(
+      coordinateToBlock(clickedRow, clickedColumn, startBlock, endBlock),
+      blockHeight,
+    );
+  }
+});
+
+test("timeline x preserves pre-range NOW and moves monotonically", () => {
+  const startBlock = 1_200_000;
+  const blocksPerColumn = 4_000;
+  const cellSize = 9;
+  const beforeRange = blockToTimelineX(1_100_000, startBlock, blocksPerColumn, cellSize);
+  const atStart = blockToTimelineX(startBlock, startBlock, blocksPerColumn, cellSize);
+  const later = blockToTimelineX(startBlock + 10_000, startBlock, blocksPerColumn, cellSize);
+
+  assert.ok(beforeRange < 0);
+  assert.ok(atStart > beforeRange);
+  assert.ok(later > atStart);
 });

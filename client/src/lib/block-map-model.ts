@@ -14,7 +14,7 @@ export type BlockCoordinate = {
   row: number;
 };
 
-export const DEFAULT_BLOCKS_PER_ROW = 1280;
+export const DEFAULT_BLOCKS_PER_COLUMN = 48;
 
 export function getBlockCount(startBlock: number, endBlock: number) {
   if (!Number.isInteger(startBlock) || !Number.isInteger(endBlock) || endBlock < startBlock) {
@@ -31,20 +31,20 @@ export function createBlockHeights(startBlock: number, endBlock: number) {
 export function blockToCoordinate(
   blockHeight: number,
   startBlock: number,
-  blocksPerRow = DEFAULT_BLOCKS_PER_ROW,
+  blocksPerColumn = DEFAULT_BLOCKS_PER_COLUMN,
 ): BlockCoordinate {
   if (!Number.isInteger(blockHeight) || blockHeight < startBlock) {
     throw new Error("Block height is outside the map range");
   }
-  if (!Number.isInteger(blocksPerRow) || blocksPerRow <= 0) {
-    throw new Error("blocksPerRow must be a positive integer");
+  if (!Number.isInteger(blocksPerColumn) || blocksPerColumn <= 0) {
+    throw new Error("blocksPerColumn must be a positive integer");
   }
 
   const index = blockHeight - startBlock;
   return {
     index,
-    column: index % blocksPerRow,
-    row: Math.floor(index / blocksPerRow),
+    column: Math.floor(index / blocksPerColumn),
+    row: index % blocksPerColumn,
   };
 }
 
@@ -53,34 +53,47 @@ export function coordinateToBlock(
   column: number,
   startBlock: number,
   endBlock: number,
-  blocksPerRow = DEFAULT_BLOCKS_PER_ROW,
+  blocksPerColumn = DEFAULT_BLOCKS_PER_COLUMN,
 ) {
-  if (!Number.isInteger(row) || !Number.isInteger(column) || row < 0 || column < 0 || column >= blocksPerRow) {
+  if (!Number.isInteger(row) || !Number.isInteger(column) || row < 0 || column < 0 || row >= blocksPerColumn) {
     return null;
   }
-  const blockHeight = startBlock + row * blocksPerRow + column;
+  const blockHeight = startBlock + column * blocksPerColumn + row;
   return blockHeight <= endBlock ? blockHeight : null;
 }
 
-export function getGridDimensions(startBlock: number, endBlock: number, blocksPerRow = DEFAULT_BLOCKS_PER_ROW) {
+export function getGridDimensions(startBlock: number, endBlock: number, blocksPerColumn = DEFAULT_BLOCKS_PER_COLUMN) {
   const count = getBlockCount(startBlock, endBlock);
   return {
-    columns: blocksPerRow,
-    rows: Math.ceil(count / blocksPerRow),
+    columns: Math.ceil(count / blocksPerColumn),
+    rows: blocksPerColumn,
     count,
   };
 }
 
-export function getContiguousRowRange(
-  row: number,
+export function blockToTimelineX(
+  blockHeight: number,
+  startBlock: number,
+  blocksPerColumn: number,
+  cellSize: number,
+  panX = 0,
+) {
+  if (blocksPerColumn <= 0 || cellSize <= 0) {
+    throw new Error("Timeline dimensions must be positive");
+  }
+  return panX + ((blockHeight - startBlock) / blocksPerColumn) * cellSize + cellSize / 2;
+}
+
+export function getContiguousColumnRange(
+  column: number,
   startBlock: number,
   endBlock: number,
-  blocksPerRow = DEFAULT_BLOCKS_PER_ROW,
+  blocksPerColumn = DEFAULT_BLOCKS_PER_COLUMN,
 ) {
-  const first = coordinateToBlock(row, 0, startBlock, endBlock, blocksPerRow);
+  const first = coordinateToBlock(0, column, startBlock, endBlock, blocksPerColumn);
   if (first === null) return null;
   return {
     startBlock: first,
-    endBlock: Math.min(endBlock, first + blocksPerRow - 1),
+    endBlock: Math.min(endBlock, first + blocksPerColumn - 1),
   };
 }
