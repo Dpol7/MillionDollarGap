@@ -18,23 +18,17 @@ import {
   coordinateToBlock,
   getGridDimensions,
 } from "@/lib/block-map-model";
+import { dateToBlock, estimateBlock, isBitcoinModelStats, modelFromFallback, type BitcoinModelStats, type BlockEstimate } from "@/lib/block-estimator";
 
 type ViewMode = "block" | "time";
 type YearPoint = { year: number; block: number };
 
-const DEMO_CURRENT_BLOCK = 914_280;
-const DEMO_NOW = new Date("2026-09-10T00:00:00Z");
-const BLOCK_INTERVAL_MS = 10 * 60 * 1000;
+const FALLBACK_MODEL = modelFromFallback(new Date("2026-09-10T00:00:00Z").getTime());
 const WINDOW_END = new Date("2038-01-01T00:00:00Z");
-const BLOCKS_PER_YEAR = Math.round((365.25 * 24 * 60 * 60 * 1000) / BLOCK_INTERVAL_MS);
 
-function blockForDate(date: Date) {
-  return Math.round(DEMO_CURRENT_BLOCK + (date.getTime() - DEMO_NOW.getTime()) / BLOCK_INTERVAL_MS);
+function blockForDate(date: Date, model: BitcoinModelStats = FALLBACK_MODEL) {
+  return dateToBlock(model, date);
 }
-
-const MAP_START_BLOCK = DEMO_CURRENT_BLOCK;
-const MAP_END_BLOCK = blockForDate(WINDOW_END);
-const MAP_BLOCK_COUNT = MAP_END_BLOCK - MAP_START_BLOCK + 1;
 
 function formatBlock(block: number) {
   return `#${Math.round(block).toLocaleString("en-US")}`;
@@ -62,30 +56,20 @@ function formatRange(start: Date, end: Date) {
   return `${startLabel} — ${endLabel}`;
 }
 
-function estimateBlock(block: number) {
-  const blocksAhead = Math.max(0, block - DEMO_CURRENT_BLOCK);
-  const likelyDate = new Date(DEMO_NOW.getTime() + blocksAhead * BLOCK_INTERVAL_MS);
-  // The uncertainty grows with the square root of the number of future blocks.
-  // This is deliberately a transparent Stage 1 estimate, not a promise.
-  const uncertaintyDays = Math.max(45, Math.round(Math.sqrt(blocksAhead) * 0.7));
-  const fiftyStart = new Date(likelyDate.getTime() - uncertaintyDays * 0.5 * 86_400_000);
-  const fiftyEnd = new Date(likelyDate.getTime() + uncertaintyDays * 0.5 * 86_400_000);
-  const eightyStart = new Date(likelyDate.getTime() - uncertaintyDays * 0.95 * 86_400_000);
-  const eightyEnd = new Date(likelyDate.getTime() + uncertaintyDays * 0.95 * 86_400_000);
+function dateInputValue(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
 
+function formatEstimate(result: BlockEstimate) {
   return {
-    likely: formatMonth(likelyDate),
-    fifty: formatRange(fiftyStart, fiftyEnd),
-    eighty: formatRange(eightyStart, eightyEnd),
+    likely: formatMonth(result.median),
+    fifty: formatRange(result.p25, result.p75),
+    eighty: formatRange(result.p10, result.p90),
   };
 }
 
 const CLAIMED_BLOCKS = [
-  blockForDate(new Date("2029-07-01T00:00:00Z")),
-  blockForDate(new Date("2031-11-01T00:00:00Z")),
-  blockForDate(new Date("2033-06-01T00:00:00Z")),
-  blockForDate(new Date("2035-03-01T00:00:00Z")),
-  blockForDate(new Date("2037-09-01T00:00:00Z")),
+  1_061_880, 1_184_712, 1_267_944, 1_359_816, 1_491_576,
 ];
 
 function isDemoClaimed(block: number) {
@@ -105,6 +89,10 @@ type LockStep = "closed" | "confirm" | "email" | "payment" | "success" | "accoun
 
 function BlockCanvas({
   currentBlock,
+  mapStart,
+  mapEnd,
+  yearPoints,
+  estimate,
   selectedBlock,
   highlightedRange,
   claimedBlocks = [],
@@ -113,6 +101,10 @@ function BlockCanvas({
   onSelect,
 }: {
   currentBlock: number;
+  mapStart: number;
+  mapEnd: number;
+  yearPoints: YearPoint[];
+  estimate: (block: number) => BlockEstimate;
   selectedBlock: number;
   highlightedRange: { startBlock: number; endBlock: number } | null;
   claimedBlocks: number[];
@@ -128,11 +120,11 @@ function BlockCanvas({
   const [hoveredBlock, setHoveredBlock] = useState<number | null>(null);
   const [viewport, setViewport] = useState({ width: 1200, height: 418 });
 
-  const mapMin = MAP_START_BLOCK;
-  const mapMax = MAP_END_BLOCK;
+  const mapMin = mapStart;
+  const mapMax = mapEnd;
   const baseCellSize = 9;
   const defaultColumns = Math.max(24, Math.floor(viewport.width / baseCellSize));
-  const blocksPerColumn = Math.ceil(MAP_BLOCK_COUNT / defaultColumns);
+  const blocksPerColumn = Math.ceil((mapMax - mapMin + 1) / defaultColumns);
   const dimensions = getGridDimensions(mapMin, mapMax, blocksPerColumn);
   const safeSelectedBlock = Math.min(mapMax, Math.max(mapMin, selectedBlock));
   const selectedCoordinate = blockToCoordinate(safeSelectedBlock, mapMin, blocksPerColumn);
@@ -246,8 +238,7 @@ function BlockCanvas({
 
       // Year divisions are vertical because chronology advances by column.
       // Labels remain exclusively on the bottom x-axis.
-      for (let year = 2028; year <= 2038; year += 1) {
-        const yearBlock = blockForDate(new Date(`${year}-01-01T00:00:00Z`));
+      for (const { year, block: yearBlock } of yearPoints) {
         const x = blockToTimelineX(yearBlock, mapMin, blocksPerColumn, cellScreen, pan.x);
         if (x < -1 || x > width + 1) continue;
         ctx.strokeStyle = "rgba(247,147,26,0.25)";
@@ -311,7 +302,7 @@ function BlockCanvas({
     };
 
     draw();
-  }, [baseCellSize, blocksPerColumn, claimedBlocks, currentBlock, dimensions.columns, dimensions.rows, highlightedRange, hoveredBlock, mapMax, mapMin, ownedBlock, pan, selectedBlock, selectedCoordinate.column, selectedCoordinate.row, viewMode, viewport, zoom]);
+  }, [baseCellSize, blocksPerColumn, claimedBlocks, currentBlock, dimensions.columns, dimensions.rows, estimate, highlightedRange, hoveredBlock, mapMax, mapMin, ownedBlock, pan, selectedBlock, selectedCoordinate.column, selectedCoordinate.row, viewMode, viewport, yearPoints, zoom]);
 
   const blockFromPointer = (event: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -402,8 +393,7 @@ function BlockCanvas({
         <span className="now-axis-line" style={{ left: `${visibleNowX}px` }}><b>{currentBlock < mapMin ? "NOW · BEFORE 2028" : "NOW"}</b></span>
         <div className="axis-years">
           {Array.from({ length: 11 }, (_, index) => {
-            const year = 2028 + index;
-            const block = blockForDate(new Date(`${year}-01-01T00:00:00Z`));
+            const { year, block } = yearPoints[index];
             const x = blockToTimelineX(block, mapMin, blocksPerColumn, baseCellSize * zoom, pan.x);
             return <span key={year} style={{ left: `${x}px` }}>{year}</span>;
           })}
@@ -412,7 +402,7 @@ function BlockCanvas({
       {hoveredBlock !== null && (
         <div className="map-hover-readout" role="status">
           <span>{formatBlock(hoveredBlock)}</span>
-          <span>{estimateBlock(hoveredBlock).likely}</span>
+          <span>{formatMonth(estimate(hoveredBlock).median)}</span>
           <span className={hoveredBlock === ownedBlock ? "green-text" : blockIsClaimed(hoveredBlock) ? "orange-text" : "green-text"}>
             {hoveredBlock === ownedBlock ? "YOUR BLOCK" : blockIsClaimed(hoveredBlock) ? "CLAIMED" : "AVAILABLE"} · $1
           </span>
@@ -421,11 +411,6 @@ function BlockCanvas({
     </div>
   );
 }
-
-const years = Array.from({ length: 11 }, (_, index) => {
-  const year = 2028 + index;
-  return { year, block: blockForDate(new Date(`${year}-01-01T00:00:00Z`)) };
-});
 
 const distribution = [
   { year: 2028, count: 5 },
@@ -444,7 +429,23 @@ const distribution = [
 export default function Home() {
   const mapSectionRef = useRef<HTMLElement>(null);
   const { isLoaded: authLoaded, isSignedIn } = useAuth();
-  const [selectedBlock, setSelectedBlock] = useState(() => years[5].block + Math.round(BLOCKS_PER_YEAR * 0.45));
+  const [model, setModel] = useState<BitcoinModelStats>(() => {
+    try {
+      const saved = localStorage.getItem("bitcoin-block-model-v3");
+      const parsed: unknown = saved ? JSON.parse(saved) : null;
+      return isBitcoinModelStats(parsed) ? parsed : FALLBACK_MODEL;
+    } catch {
+      return FALLBACK_MODEL;
+    }
+  });
+  const years = useMemo(() => Array.from({ length: 11 }, (_, index) => {
+    const year = 2028 + index;
+    return { year, block: blockForDate(new Date(`${year}-01-01T00:00:00Z`), model) };
+  }), [model]);
+  const mapStart = model.currentBlock;
+  const mapEnd = blockForDate(WINDOW_END, model);
+  const mapCount = mapEnd - mapStart + 1;
+  const [selectedBlock, setSelectedBlock] = useState(() => years[5].block + 1000);
   const [viewMode, setViewMode] = useState<ViewMode>("block");
   const [searchValue, setSearchValue] = useState("");
   const [jumpYear, setJumpYear] = useState("2033");
@@ -456,9 +457,25 @@ export default function Home() {
   const [lockStep, setLockStep] = useState<LockStep>("closed");
   const [lockError, setLockError] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
-  const estimate = useMemo(() => estimateBlock(selectedBlock), [selectedBlock]);
+  const estimate = useMemo(() => formatEstimate(estimateBlock(model, selectedBlock)), [model, selectedBlock]);
   const selectedIsOwned = prediction?.blockHeight === selectedBlock;
   const selectedIsClaimed = isDemoClaimed(selectedBlock) || claimedBlocks.includes(selectedBlock);
+
+  useEffect(() => {
+    let active = true;
+    const refresh = () => fetch("/api/bitcoin/model").then(async (response) => {
+      if (!response.ok) throw new Error((await response.json()).message || "Model unavailable");
+      return response.json() as Promise<BitcoinModelStats>;
+    }).then((next) => {
+      localStorage.setItem("bitcoin-block-model-v3", JSON.stringify(next));
+      if (active) setModel(next);
+    }).catch(() => {
+      if (active) setNotice("Live Bitcoin timing data is temporarily unavailable; showing the last valid model.");
+    });
+    void refresh();
+    const timer = window.setInterval(refresh, 30_000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, []);
 
   useEffect(() => {
     if (window.location.hash !== "#map") return;
@@ -507,7 +524,7 @@ export default function Home() {
   const jumpToYear = (year: string) => {
     setJumpYear(year);
     const target = years.find((item) => item.year === Number(year));
-    if (target) selectBlock(target.block + Math.round(BLOCKS_PER_YEAR * 0.45));
+    if (target) selectBlock(target.block + 1000);
   };
 
   const highlightDate = (dateValue: string) => {
@@ -519,10 +536,10 @@ export default function Home() {
     }
 
     const date = new Date(`${dateValue}T00:00:00Z`);
-    const centerBlock = blockForDate(new Date(date.getTime() + 12 * 60 * 60 * 1000));
-    const halfWindowBlocks = 15 * 144;
-    const startBlock = Math.max(MAP_START_BLOCK, centerBlock - halfWindowBlocks);
-    const endBlock = Math.min(MAP_END_BLOCK, centerBlock + halfWindowBlocks);
+     const centerBlock = blockForDate(new Date(date.getTime() + 12 * 60 * 60 * 1000), model);
+     const halfWindowBlocks = Math.max(1, Math.round(dateToBlock(model, new Date(date.getTime() + 15.5 * 86_400_000)) - centerBlock));
+     const startBlock = Math.max(mapStart, centerBlock - halfWindowBlocks);
+     const endBlock = Math.min(mapEnd, centerBlock + halfWindowBlocks);
     const midpoint = Math.round((startBlock + endBlock) / 2);
     setHighlightedRange({ startBlock, endBlock });
     setSelectedBlock(midpoint);
@@ -632,7 +649,7 @@ export default function Home() {
               <span>DATE</span>
               <input
                 type="date"
-                min="2026-09-10"
+                min={dateInputValue(new Date(model.currentTimestamp * 1000))}
                 max="2037-12-31"
                 value={targetDate}
                 onChange={(event) => highlightDate(event.target.value)}
@@ -674,7 +691,11 @@ export default function Home() {
               <span><SlidersHorizontal size={14} /> SCROLL TO EXPLORE</span>
             </div>
             <BlockCanvas
-              currentBlock={DEMO_CURRENT_BLOCK}
+              currentBlock={model.currentBlock}
+              mapStart={mapStart}
+              mapEnd={mapEnd}
+              yearPoints={years}
+              estimate={(block) => estimateBlock(model, block)}
               selectedBlock={selectedBlock}
               highlightedRange={highlightedRange}
               claimedBlocks={claimedBlocks}
@@ -683,8 +704,8 @@ export default function Home() {
               onSelect={selectBlock}
             />
             <div className="map-card-footer">
-              <span><span className="status-pip orange" /> NOW IS {formatBlock(DEMO_CURRENT_BLOCK)}</span>
-              <span>{MAP_BLOCK_COUNT.toLocaleString("en-US")} UNIQUE BLOCKS / ONE DOT EACH / OFFSCREEN BLOCKS VIRTUALIZED</span>
+              <span><span className="status-pip orange" /> NOW IS {formatBlock(model.currentBlock)}</span>
+              <span>{mapCount.toLocaleString("en-US")} UNIQUE BLOCKS / ONE DOT EACH / OFFSCREEN BLOCKS VIRTUALIZED</span>
             </div>
           </div>
         </section>
@@ -704,6 +725,23 @@ export default function Home() {
               <div><span>50% LIKELY RANGE</span><strong>{estimate.fifty}</strong></div>
               <div><span>80% LIKELY RANGE</span><strong>{estimate.eighty}</strong></div>
             </div>
+            <p className="estimate-disclaimer">Estimated from recent Bitcoin block production and network difficulty. Actual timing will vary.</p>
+            {import.meta.env.DEV && (
+              <details className="estimate-disclaimer">
+                <summary>MODEL DEBUG (DEVELOPMENT)</summary>
+                <small>
+                  Current block height: {model.currentBlock}<br />
+                  Current block timestamp: {new Date(model.currentTimestamp * 1000).toISOString()}<br />
+                  Recent median block interval: {model.medianInterval.toFixed(1)}s<br />
+                  Recent mean block interval: {model.meanInterval.toFixed(1)}s<br />
+                  Recent standard deviation: {model.standardDeviation.toFixed(1)}s<br />
+                  Current difficulty: {model.difficulty.toLocaleString("en-US")}<br />
+                  Blocks remaining in current difficulty epoch: {model.epochRemaining}<br />
+                  Estimated next difficulty adjustment: {new Date(model.nextAdjustmentTimestamp).toISOString()} (block {model.nextAdjustment})<br />
+                  Model update timestamp: {new Date(model.updatedAt).toISOString()}
+                </small>
+              </details>
+            )}
             <div className="nearby-row">
               <span>PREDICTIONS NEARBY</span>
               <span>±10 <b>{(selectedBlock % 5) + 2}</b></span>

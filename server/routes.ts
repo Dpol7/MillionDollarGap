@@ -5,6 +5,7 @@ import { storage } from "./storage";
 import type { IStorage } from "./storage";
 import { bitcoinPriceSchema, timeRangeSchema, insertPollVoteSchema, insertEmailSubscriptionSchema, lockBlockSchema } from "@shared/schema";
 import path from "path";
+import { getBitcoinModelStats } from "./bitcoin-model";
 
 const COINGECKO_API_KEY = process.env.COINGECKO_API_KEY || process.env.API_KEY;
 const RESERVED_DEMO_BLOCKS = new Set([1_061_880, 1_184_712, 1_267_944, 1_359_816, 1_491_576]);
@@ -223,6 +224,13 @@ async function fetchMultiCryptoPrices() {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  app.get("/api/bitcoin/model", asyncRoute(async (_req, res) => {
+    try {
+      res.json(await getBitcoinModelStats());
+    } catch (error) {
+      res.status(503).json({ message: error instanceof Error ? error.message : "Bitcoin model unavailable" });
+    }
+  }));
   app.get("/api/prediction/session", asyncRoute(async (req, res) => {
     const { userId } = getAuth(req);
     if (!userId) return res.json({ authenticated: false, prediction: null });

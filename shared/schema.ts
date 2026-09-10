@@ -91,7 +91,7 @@ export type PredictionAccount = typeof predictionAccounts.$inferSelect;
 export type BlockLock = typeof blockLocks.$inferSelect;
 
 export const lockBlockSchema = z.object({
-  blockHeight: z.number().int().min(914_280).max(1_509_144),
+  blockHeight: z.number().int().min(914_280).max(2_000_000),
   estimatedArrival: z.string().trim().min(1).max(80),
   fiftyRange: z.string().trim().min(1).max(120),
   eightyRange: z.string().trim().min(1).max(120),

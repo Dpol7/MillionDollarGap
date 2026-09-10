@@ -1,0 +1,289 @@
+NEXT PRIORITY: FIX THE BITCOIN BLOCK → DATE ESTIMATION MODEL
+
+The current estimated-date ranges are too wide and are not useful.
+
+I want a realistic probabilistic estimate for when each future Bitcoin block is likely to occur.
+
+Core principle
+
+The block height is exact.
+
+The calendar date is an estimate.
+
+For example:
+
+Block #1,287,421
+Estimated arrival: May 2033
+50% likely range: March–July 2033
+80% likely range: January–October 2033
+
+The ranges should NOT expand to absurd multi-year ranges simply because the block is far in the future.
+
+1. USE REAL BITCOIN DATA
+
+Do not hard-code a 10-minute interval.
+
+Use live/recent Bitcoin blockchain data to establish the current:
+
+block height
+block timestamp
+recent block intervals
+current difficulty
+current difficulty epoch
+blocks remaining until the next difficulty adjustment
+
+Bitcoin difficulty adjusts every 2,016 blocks based on the observed timing of the previous period. The protocol targets an average of 10 minutes per block.
+
+Use this actual network behavior in the model.
+
+2. ESTIMATE THE CURRENT BLOCK RATE
+
+Retrieve a sufficiently large recent sample of actual Bitcoin blocks.
+
+Prefer approximately:
+
+2,016 recent blocks
+
+Calculate:
+
+median block interval
+mean block interval
+standard deviation
+recent rolling averages
+
+Do NOT blindly use a single recent block interval.
+
+Use the median/robust average to reduce the impact of unusually fast or slow individual blocks.
+
+3. MODEL FUTURE BLOCKS IN DIFFICULTY EPOCHS
+
+This is important.
+
+Do NOT do:
+
+future blocks × today's average block time
+
+with one enormous uncertainty range.
+
+Instead, divide the future into Bitcoin difficulty epochs of approximately 2,016 blocks.
+
+For each future epoch:
+
+Assume the network targets approximately 10-minute average block production.
+Carry forward the current observed network conditions.
+Introduce reasonable uncertainty around actual block production.
+Recalculate the projected date distribution as each epoch progresses.
+
+Bitcoin's difficulty mechanism is specifically designed to steer average block production back toward the 10-minute target every 2,016 blocks.
+
+4. IMPORTANT: DO NOT COMPOUND UNCERTAINTY NAIVELY
+
+This is the main problem with the current implementation.
+
+Do NOT assume that the uncertainty of every individual block simply compounds indefinitely into an enormous date range.
+
+Individual block discovery is highly variable, but Bitcoin's difficulty adjustment continuously pushes the long-run average back toward the target.
+
+The model should therefore distinguish between:
+
+Short-term uncertainty
+
+and
+
+Long-term expected block production.
+
+Long-term dates should have uncertainty, but the uncertainty should remain realistic.
+
+5. OUTPUT THREE VALUES
+
+For every future block, calculate:
+
+MOST LIKELY / MEDIAN DATE
+
+The median estimated arrival date.
+
+Display:
+
+Estimated arrival: May 2033
+
+50% RANGE
+
+Calculate approximately the 25th and 75th percentile dates.
+
+Display:
+
+50% likely: March–July 2033
+
+80% RANGE
+
+Calculate approximately the 10th and 90th percentile dates.
+
+Display:
+
+80% likely: January–October 2033
+
+These are probabilistic estimates, NOT guarantees.
+
+6. USE SIMULATION
+
+If practical, use a Monte Carlo simulation rather than a simple linear error calculation.
+
+For each selected future block:
+
+Start from the current known block height and timestamp.
+Simulate future block production.
+Simulate realistic variability in block intervals.
+Account for difficulty epochs.
+Repeat thousands of simulations.
+Record the simulated arrival date for the target block.
+Calculate:
+median
+25th percentile
+75th percentile
+10th percentile
+90th percentile
+
+This gives us:
+
+50% range = P25–P75
+
+80% range = P10–P90
+
+7. MAKE THE MODEL STABLE
+
+The estimate should NOT jump wildly every time a new Bitcoin block is mined.
+
+Do not recalculate the entire model using only the newest block.
+
+Update the underlying network statistics periodically, for example:
+
+when a meaningful amount of new block data is available
+when a difficulty adjustment occurs
+or on a reasonable scheduled refresh
+
+The current block height should update continuously for the NOW indicator, but the long-range date model should be more stable.
+
+8. THE BLOCK NUMBER NEVER CHANGES
+
+This is critical.
+
+If a user selects:
+
+Block #1,287,421
+
+that remains:
+
+Block #1,287,421
+
+forever.
+
+Only its estimated calendar date can change.
+
+For example:
+
+2026
+
+Block #1,287,421
+Estimated: May 2033
+
+2028
+
+Block #1,287,421
+Estimated: April 2033
+
+2030
+
+Block #1,287,421
+Estimated: June 2033
+
+The prediction is still exactly the same block.
+
+9. ESTIMATES MUST WORK ACROSS THE ENTIRE MAP
+
+Every block from the beginning of the prediction range through 2038 needs a deterministic estimated date.
+
+The map should therefore be able to translate:
+
+Block → Estimated date
+
+and:
+
+Date → approximate block range
+
+The estimated date should determine the horizontal position on the timeline.
+
+10. UI
+
+For a selected block, display:
+
+BLOCK #1,287,421
+
+Estimated arrival
+
+MAY 2033
+
+Then:
+
+50% likely: MAR–JUL 2033
+
+80% likely: JAN–OCT 2033
+
+Small explanatory text:
+
+Estimated from recent Bitcoin block production and network difficulty. Actual timing will vary.
+
+Do NOT say "guaranteed."
+
+11. ADD A MODEL DEBUG PANEL
+
+Create an admin/development-only section showing:
+
+Current block height
+Current block timestamp
+Recent median block interval
+Recent mean block interval
+Recent standard deviation
+Current difficulty
+Blocks remaining in current difficulty epoch
+Estimated next difficulty adjustment
+Model update timestamp
+
+This will allow us to verify that the model is actually using Bitcoin data.
+
+12. TEST THE MODEL
+
+Test these block distances:
+
+Near-term
+
+10, 100 and 1,000 blocks ahead
+
+Medium-term
+
+10,000 and 50,000 blocks ahead
+
+Long-term
+
+100,000 and 250,000 blocks ahead
+
+Far-term
+
+500,000+ blocks ahead
+
+The ranges should become somewhat wider as the target moves farther into the future, but they should NOT explode into absurd ranges.
+
+MOST IMPORTANT REQUIREMENT
+
+Do not simply make the ranges look narrower by hard-coding arbitrary ranges.
+
+I want the model to produce the ranges from an actual probabilistic model of Bitcoin block production.
+
+The goal is:
+
+Mathematically defensible + understandable to a normal user.
+
+Do not change the block map design.
+
+Do not change the prediction locking system.
+
+Only replace the current block-to-calendar-date estimation engine and connect the UI to the new estimates.
