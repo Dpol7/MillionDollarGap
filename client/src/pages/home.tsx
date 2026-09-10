@@ -116,7 +116,8 @@ function BlockCanvas({
   const defaultColumns = Math.max(24, Math.floor(viewport.width / baseCellSize));
   const blocksPerColumn = Math.ceil(MAP_BLOCK_COUNT / defaultColumns);
   const dimensions = getGridDimensions(mapMin, mapMax, blocksPerColumn);
-  const selectedCoordinate = blockToCoordinate(selectedBlock, mapMin, blocksPerColumn);
+  const safeSelectedBlock = Math.min(mapMax, Math.max(mapMin, selectedBlock));
+  const selectedCoordinate = blockToCoordinate(safeSelectedBlock, mapMin, blocksPerColumn);
   const rawNowX = blockToTimelineX(currentBlock, mapMin, blocksPerColumn, baseCellSize * zoom, pan.x);
   const visibleNowX = Math.min(viewport.width, Math.max(0, rawNowX));
 
@@ -172,6 +173,20 @@ function BlockCanvas({
       const visibleRowStart = Math.max(0, Math.floor((0 - originY) / cellScreen) - 1);
       const visibleRowEnd = Math.min(dimensions.rows - 1, Math.ceil((height - originY) / cellScreen) + 1);
 
+      if (highlightedRange) {
+        const safeRangeStart = Math.min(mapMax, Math.max(mapMin, highlightedRange.startBlock));
+        const safeRangeEnd = Math.min(mapMax, Math.max(safeRangeStart, highlightedRange.endBlock));
+        const rangeStart = blockToCoordinate(safeRangeStart, mapMin, blocksPerColumn);
+        const rangeEnd = blockToCoordinate(safeRangeEnd, mapMin, blocksPerColumn);
+        const bandStartX = xForColumn(rangeStart.column);
+        const bandEndX = xForColumn(rangeEnd.column) + cellScreen;
+        ctx.fillStyle = "rgba(35, 139, 255, 0.12)";
+        ctx.fillRect(bandStartX, 0, Math.max(cellScreen, bandEndX - bandStartX), height);
+        ctx.strokeStyle = "rgba(74, 168, 255, 0.7)";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(bandStartX, 0, Math.max(cellScreen, bandEndX - bandStartX), height);
+      }
+
       // The field always renders individual visible blocks. Off-screen blocks
       // retain deterministic coordinates but are virtualized.
       const dotDiameter = Math.min(12, Math.max(3, 6 * zoom));
@@ -190,11 +205,16 @@ function BlockCanvas({
           ctx.fillStyle = isClaimed(block)
             ? "#f7931a"
             : inHighlightedDate
-              ? "#4aa8ff"
+              ? "#238bff"
             : block < currentBlock
               ? "rgba(155,161,169,0.28)"
               : "rgba(215,220,226,0.76)";
           ctx.fill();
+          if (inHighlightedDate && !isClaimed(block)) {
+            ctx.strokeStyle = "rgba(123, 194, 255, 0.95)";
+            ctx.lineWidth = 1;
+            ctx.stroke();
+          }
         }
       }
 
@@ -447,8 +467,10 @@ export default function Home() {
     }
 
     const date = new Date(`${dateValue}T00:00:00Z`);
-    const startBlock = Math.max(MAP_START_BLOCK, blockForDate(date));
-    const endBlock = Math.min(MAP_END_BLOCK, startBlock + 143);
+    const centerBlock = blockForDate(new Date(date.getTime() + 12 * 60 * 60 * 1000));
+    const halfWindowBlocks = 15 * 144;
+    const startBlock = Math.max(MAP_START_BLOCK, centerBlock - halfWindowBlocks);
+    const endBlock = Math.min(MAP_END_BLOCK, centerBlock + halfWindowBlocks);
     const midpoint = Math.round((startBlock + endBlock) / 2);
     setHighlightedRange({ startBlock, endBlock });
     setSelectedBlock(midpoint);
@@ -458,7 +480,7 @@ export default function Home() {
       year: "numeric",
       timeZone: "UTC",
     }).format(date);
-    setNotice(`Highlighted ${endBlock - startBlock + 1} projected blocks for ${label}. Orange blocks are already claimed.`);
+    setNotice(`Highlighted a 31-day candidate window around ${label}. Blue dots are candidates; orange dots are already claimed.`);
   };
 
   return (
