@@ -92,11 +92,13 @@ function isClaimed(block: number) {
 function BlockCanvas({
   currentBlock,
   selectedBlock,
+  highlightedRange,
   viewMode,
   onSelect,
 }: {
   currentBlock: number;
   selectedBlock: number;
+  highlightedRange: { startBlock: number; endBlock: number } | null;
   viewMode: ViewMode;
   onSelect: (block: number) => void;
 }) {
@@ -180,10 +182,15 @@ function BlockCanvas({
           if (block === null) continue;
           const x = xForColumn(column) + cellScreen / 2;
           const y = yForRow(row) + cellScreen / 2;
+          const inHighlightedDate = highlightedRange !== null
+            && block >= highlightedRange.startBlock
+            && block <= highlightedRange.endBlock;
           ctx.beginPath();
           ctx.arc(x, y, dotRadius, 0, Math.PI * 2);
           ctx.fillStyle = isClaimed(block)
             ? "#f7931a"
+            : inHighlightedDate
+              ? "#4aa8ff"
             : block < currentBlock
               ? "rgba(155,161,169,0.28)"
               : "rgba(215,220,226,0.76)";
@@ -258,7 +265,7 @@ function BlockCanvas({
     };
 
     draw();
-  }, [baseCellSize, blocksPerColumn, currentBlock, dimensions.columns, dimensions.rows, hoveredBlock, mapMax, mapMin, pan, selectedBlock, selectedCoordinate.column, selectedCoordinate.row, viewMode, viewport, zoom]);
+  }, [baseCellSize, blocksPerColumn, currentBlock, dimensions.columns, dimensions.rows, highlightedRange, hoveredBlock, mapMax, mapMin, pan, selectedBlock, selectedCoordinate.column, selectedCoordinate.row, viewMode, viewport, zoom]);
 
   const blockFromPointer = (event: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -392,6 +399,8 @@ export default function Home() {
   const [viewMode, setViewMode] = useState<ViewMode>("block");
   const [searchValue, setSearchValue] = useState("");
   const [jumpYear, setJumpYear] = useState("2033");
+  const [targetDate, setTargetDate] = useState("");
+  const [highlightedRange, setHighlightedRange] = useState<{ startBlock: number; endBlock: number } | null>(null);
   const [notice, setNotice] = useState("");
   const estimate = useMemo(() => estimateBlock(selectedBlock), [selectedBlock]);
   const selectedIsClaimed = isClaimed(selectedBlock);
@@ -427,6 +436,29 @@ export default function Home() {
     setJumpYear(year);
     const target = years.find((item) => item.year === Number(year));
     if (target) selectBlock(target.block + Math.round(BLOCKS_PER_YEAR * 0.45));
+  };
+
+  const highlightDate = (dateValue: string) => {
+    setTargetDate(dateValue);
+    if (!dateValue) {
+      setHighlightedRange(null);
+      setNotice("");
+      return;
+    }
+
+    const date = new Date(`${dateValue}T00:00:00Z`);
+    const startBlock = Math.max(MAP_START_BLOCK, blockForDate(date));
+    const endBlock = Math.min(MAP_END_BLOCK, startBlock + 143);
+    const midpoint = Math.round((startBlock + endBlock) / 2);
+    setHighlightedRange({ startBlock, endBlock });
+    setSelectedBlock(midpoint);
+    const label = new Intl.DateTimeFormat("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+      timeZone: "UTC",
+    }).format(date);
+    setNotice(`Highlighted ${endBlock - startBlock + 1} projected blocks for ${label}. Orange blocks are already claimed.`);
   };
 
   return (
@@ -473,6 +505,17 @@ export default function Home() {
             <button type="submit">Find block</button>
           </form>
           <div className="view-controls">
+            <label className="date-picker">
+              <span>DATE</span>
+              <input
+                type="date"
+                min="2026-09-10"
+                max="2037-12-31"
+                value={targetDate}
+                onChange={(event) => highlightDate(event.target.value)}
+                aria-label="Highlight blocks for a date"
+              />
+            </label>
             <span>VIEW BY</span>
             <div className="segmented-control" role="group" aria-label="View by">
               <button type="button" className={viewMode === "block" ? "selected" : ""} onClick={() => setViewMode("block")}>Block</button>
@@ -497,6 +540,7 @@ export default function Home() {
             </div>
             <div className="map-legend">
               <span><i className="legend-dot available" /> Available</span>
+              <span><i className="legend-dot date-range" /> Date range</span>
               <span><i className="legend-dot claimed" /> Claimed</span>
               <span><i className="legend-dot selected" /> Selected</span>
             </div>
@@ -506,7 +550,13 @@ export default function Home() {
               <span>NOW — 2038 / CHRONOLOGICAL BLOCK FIELD</span>
               <span><SlidersHorizontal size={14} /> SCROLL TO EXPLORE</span>
             </div>
-            <BlockCanvas currentBlock={DEMO_CURRENT_BLOCK} selectedBlock={selectedBlock} viewMode={viewMode} onSelect={selectBlock} />
+            <BlockCanvas
+              currentBlock={DEMO_CURRENT_BLOCK}
+              selectedBlock={selectedBlock}
+              highlightedRange={highlightedRange}
+              viewMode={viewMode}
+              onSelect={selectBlock}
+            />
             <div className="map-card-footer">
               <span><span className="status-pip orange" /> NOW IS {formatBlock(DEMO_CURRENT_BLOCK)}</span>
               <span>{MAP_BLOCK_COUNT.toLocaleString("en-US")} UNIQUE BLOCKS / ONE DOT EACH / OFFSCREEN BLOCKS VIRTUALIZED</span>

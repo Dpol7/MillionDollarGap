@@ -71,6 +71,9 @@ a { color: inherit; text-decoration: none; }
 .block-search button, .lock-button { border: 0; cursor: pointer; background: var(--primary); color: var(--primary-foreground); }
 .block-search button { height: 100%; padding: 0 14px; font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; }
 .view-controls { display: flex; align-items: center; gap: 13px; color: #73787f; font-family: var(--font-mono); font-size: 9px; letter-spacing: .1em; white-space: nowrap; }
+.date-picker { display: flex; align-items: center; gap: 8px; }
+.date-picker input { height: 32px; padding: 0 8px; border: 1px solid var(--border); outline: 0; color-scheme: dark; background: var(--input); color: var(--foreground); font-family: var(--font-mono); font-size: 9px; }
+.date-picker input:focus { border-color: rgba(74, 168, 255, .8); }
 .segmented-control { display: flex; border: 1px solid var(--border); }
 .segmented-control button { padding: 9px 10px; border: 0; cursor: pointer; background: transparent; color: #7b8187; font-family: var(--font-mono); font-size: 9px; text-transform: uppercase; }
 .segmented-control button.selected { background: var(--foreground); color: var(--background); }
@@ -84,6 +87,7 @@ a { color: inherit; text-decoration: none; }
 .map-legend { display: flex; align-items: center; gap: 17px; color: #878c92; font-family: var(--font-mono); font-size: 9px; text-transform: uppercase; letter-spacing: .07em; }
 .map-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .legend-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #d7dce2; }
+.legend-dot.date-range { background: #4aa8ff; box-shadow: 0 0 0 3px rgba(74, 168, 255, .12); }
 .legend-dot.claimed { background: var(--primary); }
 .legend-dot.selected { background: #b5f36c; box-shadow: 0 0 0 3px rgba(181, 243, 108, .12); }
 .map-card { border: 1px solid var(--border); background: #111316; }
@@ -179,6 +183,7 @@ a { color: inherit; text-decoration: none; }
   .prediction-controls { display: flex; flex-direction: column; align-items: stretch; gap: 17px; padding-bottom: 26px; }
   .view-controls { justify-content: space-between; gap: 8px; overflow-x: auto; }
   .view-controls > span { display: none; }
+  .date-picker { flex: 1 0 auto; }
   .jump-select { margin-left: auto; }
   .control-notice { margin: -5px 0 0; }
   .section-heading { align-items: flex-start; flex-direction: column; }
