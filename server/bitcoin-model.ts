@@ -109,15 +109,11 @@ export async function getBitcoinModelStats(): Promise<BitcoinModelStats> {
     getJson<DifficultyHistoryRow[]>("/v1/mining/difficulty-adjustments/3y"),
     getRecentBlocks(tip.height, sampleBlocks),
   ]);
-  const allIntervals = blocks.slice(1).flatMap((block, i) => {
+  const intervals = blocks.slice(1).flatMap((block, i) => {
     const previous = blocks[i];
     const seconds = block.timestamp - previous.timestamp;
-    return seconds > 0 ? [seconds] : [];
+    return seconds > 0 && seconds < 6 * 60 * 60 ? [seconds] : [];
   });
-  if (allIntervals.length !== sampleBlocks - 1) {
-    throw new Error("Mempool API returned invalid chronological block timestamps");
-  }
-  const intervals = allIntervals.filter((seconds) => seconds < 6 * 60 * 60);
   if (intervals.length < sampleBlocks * 0.9) throw new Error("Mempool API returned too few usable block intervals");
   const ordered = [...intervals].sort((a, b) => a - b);
   const mean = intervals.reduce((sum, value) => sum + value, 0) / intervals.length;
